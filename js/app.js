@@ -507,7 +507,7 @@ function setTool(t) {
 function updateHint() {
   if (active === photo && !photo.ready) { setHint('Upload a photo to start — or switch to Design mode'); return; }
   switch (tool.kind) {
-    case 'select': setHint('Click an item to select · drag to move · R rotate · Del delete · drag empty space to orbit'); break;
+    case 'select': setHint('Click an item to select · drag to move · R rotate · D duplicate · Del delete · drag empty space to orbit'); break;
     case 'place': setHint(`Click to place ${assetDef(tool.asset).name} · Esc to finish · right-drag to orbit`); break;
     case 'draw': setHint(`Click points to draw ${curveDef(tool.asset).name.replace(' (draw)', '')} · double-click or Enter to finish · Esc to cancel`); break;
     case 'sculpt-up': setHint('Drag to raise the ground · right-drag to orbit'); break;
@@ -837,6 +837,21 @@ $('col-reset').addEventListener('click', () => {
   updateColorRows(it, assetDefAny(it.type));
 });
 
+$('sel-dup').addEventListener('click', () => {
+  const it = itemFor(active, active.selected);
+  if (!it) return;
+  pushUndo();
+  // exact clone: same seed (shape), rotation, scale, and colors — only shifted
+  const copy = JSON.parse(JSON.stringify(it));
+  copy.id = nextId++;
+  copy.x += 1.2;
+  copy.z += 0.6;
+  if (active === design && !copy.pts) copy.y = design.terrain.heightAt(copy.x, copy.z);
+  active.items.push(copy);
+  spawnObject(active, copy);
+  select(active, copy.id);
+});
+
 $('sel-del').addEventListener('click', () => {
   if (active.selected == null) return;
   pushUndo();
@@ -861,6 +876,7 @@ window.addEventListener('keydown', e => {
       selEdit(it => { it.rot += (e.shiftKey ? -15 : 15) * Math.PI / 180; });
       sliderArmed = true;
       break;
+    case 'd': case 'D': $('sel-dup').click(); break;
     case 'g': case 'G': design.grid.visible = !design.grid.visible; break;
   }
 });
