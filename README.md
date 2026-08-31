@@ -68,6 +68,17 @@ total, 40–175k triangles each). They load asynchronously at startup and swap i
 over the procedural versions; if the files can't load (offline, or the shared
 artifact build), the procedural low-poly versions are used automatically.
 
+## Model credits
+
+Photoscanned/3D models are CC0 from [Poly Haven](https://polyhaven.com)
+(deciduous tree, bigleaf maple tree, shore pine, Douglas fir, huckleberry
+bush, boulder) and CC-BY from Sketchfab — thanks to: Helindu (Japanese
+maple), vasil--0 (arborvitae), lolipop_1707 (birch), whitewashstudio
+(azalea bush used for hedge & rhododendron), strielecki (craftsman house),
+mbuannoart (two-story house), volvor (red barn), Poligonik (garden shed),
+shooter24994 (bench), abby (fire pit). All processed and optimized for
+this app; remaining items are original procedural models.
+
 ## Cost estimator
 
 The 💲 panel keeps a running, itemized estimate of everything in the active

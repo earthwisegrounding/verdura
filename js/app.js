@@ -499,7 +499,7 @@ function setTool(t) {
   clearDrawPreview();
   draw = t.kind === 'draw' ? { asset: t.asset, pts: [], preview: null, lastHover: null } : null;
   updateDrawActions();
-  if (t.kind !== 'select' && window.innerWidth <= 760) document.body.classList.remove('sidebar-open');
+  if (window.innerWidth <= 760) document.body.classList.remove('sidebar-open');
   if (t.kind !== 'clone' && photo.srcMarker) photo.srcMarker.visible = false;
   updateHint();
 }

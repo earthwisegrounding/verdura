@@ -8,11 +8,23 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 // Real-model overrides: id -> file + target height (models are normalized to
 // this height with their base at y=0 when loaded).
 export const MODELS = {
-  oak:       { url: 'assets/models/tree_deciduous.glb', height: 5.5, fp: 2.4 },
-  jacaranda: { url: 'assets/models/tree_jacaranda.glb', height: 8.0, fp: 3.4 },
-  pine:      { url: 'assets/models/tree_pine.glb',      height: 8.0, fp: 1.9 },
-  shrub:     { url: 'assets/models/shrub_bush.glb',     height: 1.4, fp: 1.0 },
-  boulder:   { url: 'assets/models/boulder.glb',        height: 0.85, fp: 0.9 },
+  oak:       { url: 'assets/models/tree_deciduous.glb',  height: 5.5,  fp: 2.4 },
+  jacaranda: { url: 'assets/models/tree_jacaranda.glb',  height: 8.0,  fp: 3.4 },
+  pine:      { url: 'assets/models/tree_pine.glb',       height: 8.0,  fp: 1.9 },
+  maple:     { url: 'assets/models/tree_jmaple.glb',     height: 4.0,  fp: 2.0 },
+  birch:     { url: 'assets/models/tree_birch.glb',      height: 6.5,  fp: 2.0 },
+  dougfir:   { url: 'assets/models/tree_dougfir.glb',    height: 8.5,  fp: 2.2 },
+  cypress:   { url: 'assets/models/tree_arborvitae.glb', height: 3.4,  fp: 0.9 },
+  shrub:     { url: 'assets/models/shrub_bush.glb',      height: 1.4,  fp: 1.0 },
+  rhodie:    { url: 'assets/models/rhodie_bush.glb',     height: 1.3,  fp: 0.9 },
+  hedge:     { url: 'assets/models/hedge_bush.glb',      height: 0.85, fp: 0.9 },
+  boulder:   { url: 'assets/models/boulder.glb',         height: 0.85, fp: 0.9 },
+  farmhouse: { url: 'assets/models/house_craftsman.glb', height: 6.4,  fp: 7.2 },
+  colonial:  { url: 'assets/models/house_twostory.glb',  height: 6.3,  fp: 5.2 },
+  barn:      { url: 'assets/models/barn.glb',            height: 4.0,  fp: 5.2 },
+  shed:      { url: 'assets/models/shed.glb',            height: 2.8,  fp: 2.0 },
+  bench:     { url: 'assets/models/bench.glb',           height: 0.85, fp: 0.95 },
+  firepit:   { url: 'assets/models/firepit.glb',         width: 1.5,   fp: 0.95 },
 };
 
 const modelCache = {};
@@ -30,7 +42,9 @@ export async function preloadModels(onOne) {
       const gltf = await loader.loadAsync((embedded && embedded[id]) || def.url);
       const src = gltf.scene;
       const box = new THREE.Box3().setFromObject(src);
-      const s = def.height / (box.max.y - box.min.y);
+      const s = def.width
+        ? def.width / (box.max.x - box.min.x)
+        : def.height / (box.max.y - box.min.y);
       src.scale.setScalar(s);
       const box2 = new THREE.Box3().setFromObject(src);
       src.position.set(-(box2.min.x + box2.max.x) / 2, -box2.min.y, -(box2.min.z + box2.max.z) / 2);
@@ -40,10 +54,17 @@ export async function preloadModels(onOne) {
         if (!m.isMesh) return;
         m.castShadow = true;
         m.receiveShadow = true;
+        // many source models carry baked-dark vertex colors that multiply
+        // the texture to near-black — drop them
+        if (m.geometry && m.geometry.attributes.color) m.geometry.deleteAttribute('color');
+        if (m.material) m.material.vertexColors = false;
         if (m.material) {
           const mat = m.material;
-          if (mat.transparent || mat.alphaTest > 0) {
-            // foliage cards: cutout alpha renders cleaner than blended
+          mat.side = THREE.DoubleSide;
+          // foliage cards need cutout alpha; some sources forget to flag it,
+          // so also match by material name
+          const leafy = /branch|leaf|leaves|needle|twig|atlas|fern|flower|frond|bloom/i.test(mat.name || '');
+          if (mat.transparent || mat.alphaTest > 0 || leafy) {
             mat.transparent = false;
             mat.alphaTest = 0.45;
             mat.depthWrite = true;
@@ -499,7 +520,7 @@ export const ASSETS = [
   { id: 'pergola',   name: 'Pergola',         icon: '⛩️', cat: 'Structures',       fp: 1.8, build: pergola, tint: ['body'], colors: { body: '#8a6642' } },
   { id: 'raisedbed', name: 'Raised bed',      icon: '🪴', cat: 'Structures',       fp: 1.1, build: raisedbed },
   { id: 'arch',      name: 'Garden arch',     icon: '🎪', cat: 'Structures',       fp: 0.9, build: arch },
-  { id: 'bench',     name: 'Bench',           icon: '🪑', cat: 'Structures',       fp: 0.9, build: bench, tint: ['body'], colors: { body: '#8a6642' } },
+  { id: 'bench',     name: 'Bench',           icon: '🪑', cat: 'Structures',       fp: 0.9, build: bench },
   { id: 'firepit',   name: 'Fire pit',        icon: '🔥', cat: 'Structures',       fp: 0.9, build: firepit },
   { id: 'pond',      name: 'Pond',            icon: '💧', cat: 'Water',            fp: 1.9, build: pond },
   { id: 'fountain',  name: 'Fountain',        icon: '⛲', cat: 'Water',            fp: 1.1, build: fountain },
@@ -743,12 +764,12 @@ ASSETS.push(
   { id: 'ranch',     name: 'Ranch home',        icon: '🏠', cat: 'Homes — single story', fp: 4.3, build: ranch,     tint: ['body', 'roof'], colors: { body: '#d9d2c3', roof: '#6b6560' } },
   { id: 'cottage',   name: 'Cottage',           icon: '🏡', cat: 'Homes — single story', fp: 3.3, build: cottage,   tint: ['body', 'roof'], colors: { body: '#c9d4c5', roof: '#7c5648' } },
   { id: 'lranch',    name: 'L-shaped ranch',    icon: '🛖', cat: 'Homes — single story', fp: 4.3, build: lranch,    tint: ['body', 'roof'], colors: { body: '#d6c9b2', roof: '#5f5b56' } },
-  { id: 'colonial',  name: 'Colonial',          icon: '🏛️', cat: 'Homes — two story',    fp: 4.3, build: colonial,  tint: ['body', 'roof'], colors: { body: '#e6e2d8', roof: '#4f4a45' } },
+  { id: 'colonial',  name: 'Two-story home',    icon: '🏛️', cat: 'Homes — two story',    fp: 4.3, build: colonial },
   { id: 'modern2',   name: 'Modern two-story',  icon: '🪟', cat: 'Homes — two story',    fp: 4.0, build: modern2,   tint: ['body', 'roof'], colors: { body: '#e8e6e0', roof: '#3f4348' } },
-  { id: 'farmhouse', name: 'Farmhouse',         icon: '🌾', cat: 'Homes — two story',    fp: 4.0, build: farmhouse, tint: ['body', 'roof'], colors: { body: '#f0ede4', roof: '#4f4a45' } },
+  { id: 'farmhouse', name: 'Craftsman home',    icon: '🌾', cat: 'Homes — two story',    fp: 4.0, build: farmhouse },
   { id: 'garage',    name: 'Detached garage',   icon: '🚗', cat: 'Outbuildings',         fp: 3.6, build: garage,    tint: ['body', 'roof'], colors: { body: '#d0cabb', roof: '#6b6560' } },
-  { id: 'barn',      name: 'Barn',              icon: '🐮', cat: 'Outbuildings',         fp: 4.7, build: barn,      tint: ['body', 'roof'], colors: { body: '#9e3b32', roof: '#7a7f85' } },
-  { id: 'shed',      name: 'Shed',              icon: '🛠️', cat: 'Outbuildings',         fp: 2.0, build: shed,      tint: ['body', 'roof'], colors: { body: '#9a7d5a', roof: '#6f6a64' } },
+  { id: 'barn',      name: 'Barn',              icon: '🐮', cat: 'Outbuildings',         fp: 4.7, build: barn },
+  { id: 'shed',      name: 'Shed',              icon: '🛠️', cat: 'Outbuildings',         fp: 2.0, build: shed },
   { id: 'storefront',name: 'Storefront',        icon: '🏪', cat: 'Commercial',           fp: 4.5, build: storefront,tint: ['body', 'roof'], colors: { body: '#c9b8a0', roof: '#a63d3f' } },
   { id: 'office',    name: 'Office building',   icon: '🏢', cat: 'Commercial',           fp: 4.5, build: office,    tint: ['body', 'roof'], colors: { body: '#a9adb3', roof: '#7d838a' } },
   { id: 'warehouse', name: 'Warehouse',         icon: '🏭', cat: 'Commercial',           fp: 6.6, build: warehouse, tint: ['body', 'roof'], colors: { body: '#9aa0a6', roof: '#84898f' } },
