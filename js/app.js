@@ -789,6 +789,7 @@ $('est-rows').addEventListener('change', e => {
   updateEstimate();
 });
 $('btn-est').addEventListener('click', () => $('est-panel').classList.toggle('hidden'));
+$('est-head').addEventListener('click', () => $('est-panel').classList.toggle('collapsed'));
 $('est-print').addEventListener('click', printEstimate);
 $('est-email').addEventListener('click', emailEstimate);
 

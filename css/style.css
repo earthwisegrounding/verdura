@@ -172,3 +172,12 @@ body[data-mode="design"] #photo-panel { display: none !important; }
   #draw-actions { bottom: 56px; }
   .floating h3 { font-size: 11px; }
 }
+
+/* ---- collapsible estimate ---- */
+#est-head { cursor: pointer; user-select: none; }
+#est-head .chev { color: var(--dim); display: inline-block; transition: transform .18s ease; margin-right: 2px; }
+#est-panel.collapsed .chev { transform: rotate(-90deg); }
+#est-panel.collapsed #est-rows,
+#est-panel.collapsed .row,
+#est-panel.collapsed #est-note { display: none; }
+#est-panel.collapsed { max-height: none; }
