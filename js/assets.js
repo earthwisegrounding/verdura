@@ -11,8 +11,8 @@ export const MODELS = {
   oak:       { url: 'assets/models/tree_deciduous.glb',  height: 5.5,  fp: 2.4 },
   jacaranda: { url: 'assets/models/tree_jacaranda.glb',  height: 8.0,  fp: 3.4 },
   pine:      { url: 'assets/models/tree_pine.glb',       height: 8.0,  fp: 1.9 },
-  maple:     { url: 'assets/models/tree_jmaple.glb',     height: 4.0,  fp: 2.0 },
-  birch:     { url: 'assets/models/tree_birch.glb',      height: 6.5,  fp: 2.0 },
+  maple:     { url: 'assets/models/tree_jmaple.glb',     height: 4.0,  fp: 2.0, rotX: -Math.PI / 2 },
+  birch:     { url: 'assets/models/tree_birch.glb',      height: 6.5,  fp: 2.0, rotX: -Math.PI / 2 },
   dougfir:   { url: 'assets/models/tree_dougfir.glb',    height: 8.5,  fp: 2.2 },
   cypress:   { url: 'assets/models/tree_arborvitae.glb', height: 3.4,  fp: 0.9 },
   shrub:     { url: 'assets/models/shrub_bush.glb',      height: 1.4,  fp: 1.0 },
@@ -41,6 +41,8 @@ export async function preloadModels(onOne) {
       const embedded = typeof window !== 'undefined' && window.__VERDURA_MODELS;
       const gltf = await loader.loadAsync((embedded && embedded[id]) || def.url);
       const src = gltf.scene;
+      if (def.rotX) src.rotation.x = def.rotX;
+      src.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(src);
       const s = def.width
         ? def.width / (box.max.x - box.min.x)
