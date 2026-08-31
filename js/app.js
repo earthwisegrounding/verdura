@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { ASSETS, CURVES, buildAsset, buildCurve, assetDef, curveDef, applyTint, preloadModels } from './assets.js?v=2';
+import { ASSETS, CURVES, buildAsset, buildCurve, assetDef, curveDef, applyTint, preloadModels, detailTexture } from './assets.js?v=2';
 import { Terrain, PAINTS } from './terrain.js?v=2';
 import * as Photo from './photo.js?v=2';
 import { saveLocal, loadLocal, hasLocal, downloadText, downloadDataUrl } from './storage.js?v=2';
@@ -36,6 +36,8 @@ function baseWorld(name) {
 const design = baseWorld('design');
 design.camera.position.set(13, 11, 13);
 design.terrain = new Terrain();
+design.terrain.mesh.material.map = detailTexture('grass', { desat: true, repeatX: 28, repeatY: 28 });
+design.terrain.mesh.material.needsUpdate = true;
 design.scene.add(design.terrain.mesh);
 design.hemi = new THREE.HemisphereLight(0xbfd8ff, 0x6a7a4a, 0.9);
 design.scene.add(design.hemi);

@@ -76,8 +76,9 @@ bush, boulder) and CC-BY from Sketchfab — thanks to: Helindu (Japanese
 maple), vasil--0 (arborvitae), lolipop_1707 (birch), whitewashstudio
 (azalea bush used for hedge & rhododendron), strielecki (craftsman house),
 mbuannoart (two-story house), volvor (red barn), Poligonik (garden shed),
-shooter24994 (bench), abby (fire pit). All processed and optimized for
-this app; remaining items are original procedural models.
+shooter24994 (bench), abby (fire pit). deltahedra (pergola). Ground, paving, siding, and roof detail textures are
+CC0 from Poly Haven. All processed and optimized for this app; remaining
+items are original procedural models.
 
 ## Cost estimator
 

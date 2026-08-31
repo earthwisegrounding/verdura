@@ -11,8 +11,8 @@ export const UNIT_COSTS = {
   oak: 300, pine: 250, cypress: 180, dougfir: 300, maple: 400, birch: 250, jacaranda: 350,
   shrub: 65, hedge: 90, flowers: 250, flowersrect: 275, grasstuft: 45, rose: 70, lavender: 35, rhodie: 90, fern: 45,
   boulder: 350, stepstones: 150, gravel: 175,
-  patio: 1500, wall: 350, path: 400,
-  fence: 220, pergola: 4000, raisedbed: 350, arch: 450, bench: 400, firepit: 900,
+  patio: 1500, path: 400,
+  pergola: 4000, raisedbed: 350, arch: 450, bench: 400, firepit: 900,
   pond: 3400, fountain: 2800, birdbath: 250,
   lamp: 250, pot: 150,
 };
@@ -21,6 +21,9 @@ export const UNIT_COSTS = {
 // the cost field, and the landscaper can overwrite it per item.
 export const CURVE_RATES = {
   rockwall: 60,   // low dry-stack stone garden wall
+  stonewall: 65,  // mortared/stacked stone garden wall
+  fencedraw: 30,  // wood picket fence installed
+
   concwall: 70,   // short poured/block concrete wall
   walkway: 40,    // ~4 ft wide concrete walk (~$10/sq ft)
 };

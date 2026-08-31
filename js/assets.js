@@ -19,6 +19,7 @@ export const MODELS = {
   rhodie:    { url: 'assets/models/rhodie_bush.glb',     height: 1.3,  fp: 0.9 },
   hedge:     { url: 'assets/models/hedge_bush.glb',      height: 0.85, fp: 0.9 },
   boulder:   { url: 'assets/models/boulder.glb',         height: 0.85, fp: 0.9 },
+  pergola:   { url: 'assets/models/pergola.glb',         height: 2.6,  fp: 2.2 },
   farmhouse: { url: 'assets/models/house_craftsman.glb', height: 6.4,  fp: 7.2 },
   colonial:  { url: 'assets/models/house_twostory.glb',  height: 6.3,  fp: 5.2 },
   barn:      { url: 'assets/models/barn.glb',            height: 4.0,  fp: 5.2 },
@@ -28,6 +29,57 @@ export const MODELS = {
 };
 
 const modelCache = {};
+
+/* ---- detail textures (Poly Haven CC0, fetched into assets/textures) ---- */
+const texCache = {};
+
+// Returns a repeating texture immediately (white until the image arrives).
+// desat converts to normalized grayscale so vertex colors / tints keep hue.
+export function detailTexture(name, { desat = false, repeatX = 1, repeatY = 1, contrast = 1 } = {}) {
+  const key = `${name}|${desat ? 1 : 0}|${repeatX}|${repeatY}|${contrast}`;
+  if (texCache[key]) return texCache[key];
+  const placeholder = document.createElement('canvas');
+  placeholder.width = placeholder.height = 1;
+  placeholder.getContext('2d').fillStyle = '#fff';
+  placeholder.getContext('2d').fillRect(0, 0, 1, 1);
+  const tex = new THREE.CanvasTexture(placeholder);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeatX, repeatY);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  const img = new Image();
+  img.onload = () => {
+    let source = img;
+    if (desat) {
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const d = ctx.getImageData(0, 0, c.width, c.height);
+      const px = d.data;
+      let sum = 0;
+      for (let i = 0; i < px.length; i += 4) {
+        const l = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+        px[i] = px[i + 1] = px[i + 2] = l;
+        sum += l;
+      }
+      const gain = 205 / (sum / (px.length / 4));
+      for (let i = 0; i < px.length; i += 4) {
+        let v = Math.min(255, px[i] * gain);
+        v = 205 + (v - 205) * contrast;
+        px[i] = px[i + 1] = px[i + 2] = Math.max(0, Math.min(255, v));
+      }
+      ctx.putImageData(d, 0, 0);
+      source = c;
+    }
+    tex.image = source;
+    tex.needsUpdate = true;
+  };
+  const emb = typeof window !== 'undefined' && window.__VERDURA_TEXTURES;
+  img.src = (emb && emb[name]) || 'assets/textures/' + name + '.jpg';
+  texCache[key] = tex;
+  return tex;
+}
 
 export function hasModel(id) { return !!modelCache[id]; }
 
@@ -327,12 +379,9 @@ function gravel(R) {
 }
 function patio(R) {
   const g = new THREE.Group();
-  for (let i = 0; i < 5; i++) for (let j = 0; j < 4; j++) {
-    const shade = 0.9 + R() * 0.2;
-    add(g, new THREE.BoxGeometry(0.56, 0.06, 0.56),
-      mat(new THREE.Color(0xb9a487).multiplyScalar(shade).getHex(), { r: 1 }),
-      [-1.2 + i * 0.6, 0.03, -0.9 + j * 0.6]);
-  }
+  const m = mat(0xcfc8bc, { r: 1 });
+  m.map = detailTexture('paving', { repeatX: 2, repeatY: 1.6 });
+  add(g, new THREE.BoxGeometry(3.0, 0.07, 2.4), m, [0, 0.035, 0]);
   return g;
 }
 function wall(R) {
@@ -516,10 +565,8 @@ export const ASSETS = [
   { id: 'stepstones',name: 'Stepping stones', icon: '⬜', cat: 'Hardscape',        fp: 1.2, build: stepstones },
   { id: 'gravel',    name: 'Gravel bed',      icon: '▫️', cat: 'Hardscape',        fp: 1.2, build: gravel },
   { id: 'patio',     name: 'Paver patio',     icon: '🟫', cat: 'Hardscape',        fp: 1.8, build: patio },
-  { id: 'wall',      name: 'Stone wall',      icon: '🧱', cat: 'Hardscape',        fp: 1.1, build: wall, tint: ['body'], colors: { body: '#9a8f7f' } },
   { id: 'path',      name: 'Flagstone path',  icon: '🛤️', cat: 'Hardscape',        fp: 1.3, build: path },
-  { id: 'fence',     name: 'Fence section',   icon: '🚧', cat: 'Structures',       fp: 1.0, build: fence, tint: ['body'], colors: { body: '#e8e4da' } },
-  { id: 'pergola',   name: 'Pergola',         icon: '⛩️', cat: 'Structures',       fp: 1.8, build: pergola, tint: ['body'], colors: { body: '#8a6642' } },
+  { id: 'pergola',   name: 'Pergola',         icon: '⛩️', cat: 'Structures',       fp: 1.8, build: pergola },
   { id: 'raisedbed', name: 'Raised bed',      icon: '🪴', cat: 'Structures',       fp: 1.1, build: raisedbed },
   { id: 'arch',      name: 'Garden arch',     icon: '🎪', cat: 'Structures',       fp: 0.9, build: arch },
   { id: 'bench',     name: 'Bench',           icon: '🪑', cat: 'Structures',       fp: 0.9, build: bench },
@@ -582,6 +629,10 @@ function gableGeo(w, d, h, over = 0.14) {
   quad(A2, A, C, C2); quad(B, B2, C2, C); quad(A, A2, B2, B);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  // planar top-down UVs are fine for roof tiles
+  const uv = [];
+  for (let i = 0; i < pos.length; i += 3) uv.push(pos[i] * 0.35, pos[i + 2] * 0.35);
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.computeVertexNormals();
   return g;
 }
@@ -597,18 +648,26 @@ function gambrelGeo(w, d, h, over = 0.15) {
 }
 
 function addBody(g, w, h, d, c, x = 0, y = 0, z = 0) {
-  return tintAs(add(g, new THREE.BoxGeometry(w, h, d), mat(c, { r: 0.9 }), [x, y + h / 2, z]), 'body');
+  const m = mat(c, { r: 0.9 });
+  m.map = detailTexture('siding', { desat: true, repeatX: 4, repeatY: 2.5, contrast: 0.45 });
+  return tintAs(add(g, new THREE.BoxGeometry(w, h, d), m, [x, y + h / 2, z]), 'body');
 }
+function roofDsMat(c) {
+  const m = dsMat(c, { flat: true, r: 0.95 });
+  m.map = detailTexture('roof', { desat: true, repeatX: 1, repeatY: 1, contrast: 0.7 });
+  return m;
+}
+
 // ridge along x (typical: along the long side of the house)
 function addRoofX(g, w, d, h, c, y) {
-  const me = new THREE.Mesh(gableGeo(d, w, h), dsMat(c, { flat: true, r: 0.95 }));
+  const me = new THREE.Mesh(gableGeo(d, w, h), roofDsMat(c));
   me.rotation.y = Math.PI / 2; me.position.y = y;
   me.castShadow = me.receiveShadow = true; g.add(me);
   return tintAs(me, 'roof');
 }
 // ridge along z (gable end faces the viewer/street)
 function addRoofZ(g, w, d, h, c, y) {
-  const me = new THREE.Mesh(gableGeo(w, d, h), dsMat(c, { flat: true, r: 0.95 }));
+  const me = new THREE.Mesh(gableGeo(w, d, h), roofDsMat(c));
   me.position.y = y;
   me.castShadow = me.receiveShadow = true; g.add(me);
   return tintAs(me, 'roof');
@@ -779,11 +838,13 @@ ASSETS.push(
 
 /* ================= drawn curves (walls & paving) ================= */
 export const CURVES = [
-  { id: 'rockwall',   name: 'Rock wall (draw)',          icon: '🧱', kind: 'stones', width: 0.5,  height: 0.55, colors: { body: '#8f8f88' } },
+  { id: 'rockwall',   name: 'Rock wall (draw)',          icon: '🪨', kind: 'stones', width: 0.5,  height: 0.55, colors: { body: '#8f8f88' } },
+  { id: 'stonewall',  name: 'Stone wall (draw)',         icon: '🧱', kind: 'stackwall', width: 0.3, height: 0.66, colors: { body: '#9a8f7f' } },
+  { id: 'fencedraw',  name: 'Fence (draw)',              icon: '🚧', kind: 'fence',  width: 0.12, height: 1.0,  colors: { body: '#e8e4da' } },
   { id: 'concwall',   name: 'Concrete wall (draw)',      icon: '⬜', kind: 'sweep',  width: 0.28, height: 0.9,  colors: { body: '#b6b1a7' } },
-  { id: 'walkway',    name: 'Concrete walkway (draw)',   icon: '🚶', kind: 'sweep',  width: 1.2,  height: 0.07, colors: { body: '#c0bbb0' } },
-  { id: 'driveway',   name: 'Driveway — concrete (draw)',icon: '🛣️', kind: 'sweep',  width: 3.2,  height: 0.09, colors: { body: '#b3aea4' } },
-  { id: 'driveway-a', name: 'Driveway — asphalt (draw)', icon: '🛣️', kind: 'sweep',  width: 3.2,  height: 0.09, colors: { body: '#3d3f43' } },
+  { id: 'walkway',    name: 'Concrete walkway (draw)',   icon: '🚶', kind: 'sweep',  width: 1.2,  height: 0.07, tex: 'concrete', colors: { body: '#c0bbb0' } },
+  { id: 'driveway',   name: 'Driveway — concrete (draw)',icon: '🛣️', kind: 'sweep',  width: 3.2,  height: 0.09, tex: 'concrete', colors: { body: '#b3aea4' } },
+  { id: 'driveway-a', name: 'Driveway — asphalt (draw)', icon: '🛣️', kind: 'sweep',  width: 3.2,  height: 0.09, tex: 'asphalt', texDesat: false, colors: { body: '#c8c8c8' } },
 ];
 
 export function curveDef(id) { return CURVES.find(c => c.id === id); }
@@ -792,7 +853,8 @@ export function curveDef(id) { return CURVES.find(c => c.id === id); }
 // ([x,y,z] triples). The base is sunk 0.15 so it hugs uneven terrain.
 function sweepGeo(pts, width, height) {
   const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)));
-  const n = Math.min(600, Math.max(12, Math.round(curve.getLength() * 3)));
+  const len = curve.getLength();
+  const n = Math.min(600, Math.max(12, Math.round(len * 3)));
   const P = curve.getSpacedPoints(n);
   const ring = [];
   for (let i = 0; i <= n; i++) {
@@ -801,26 +863,34 @@ function sweepGeo(pts, width, height) {
     t.y = 0;
     if (t.lengthSq() < 1e-8) t.set(1, 0, 0); else t.normalize();
     const nx = -t.z, nz = t.x, hw = width / 2;
-    ring.push([
+    const s = (i / n) * (len / Math.max(width, 1)); // v coordinate in texture tiles
+    ring.push({ s, c: [
       [p.x + nx * hw, p.y - 0.15, p.z + nz * hw],
       [p.x - nx * hw, p.y - 0.15, p.z - nz * hw],
       [p.x - nx * hw, p.y + height, p.z - nz * hw],
       [p.x + nx * hw, p.y + height, p.z + nz * hw],
-    ]);
+    ]});
   }
-  const pos = [];
-  const quad = (a, b, c, d) => pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+  const pos = [], uv = [];
+  const us = { 0: 0, 1: 1, 2: 1, 3: 0 };
+  const quad = (r0, i0, r1, i1, r2, i2, r3, i3) => {
+    for (const [r, i] of [[r0, i0], [r1, i1], [r2, i2], [r0, i0], [r2, i2], [r3, i3]]) {
+      pos.push(...r.c[i]);
+      uv.push(us[i], r.s);
+    }
+  };
   for (let i = 0; i < n; i++) {
     const r0 = ring[i], r1 = ring[i + 1];
-    quad(r0[0], r1[0], r1[3], r0[3]);
-    quad(r1[1], r0[1], r0[2], r1[2]);
-    quad(r0[3], r1[3], r1[2], r0[2]);
+    quad(r0, 0, r1, 0, r1, 3, r0, 3);
+    quad(r1, 1, r0, 1, r0, 2, r1, 2);
+    quad(r0, 3, r1, 3, r1, 2, r0, 2);
   }
-  quad(ring[0][1], ring[0][0], ring[0][3], ring[0][2]);
-  const e = ring[n];
-  quad(e[0], e[1], e[2], e[3]);
+  const rA = ring[0], rE = ring[n];
+  quad(rA, 1, rA, 0, rA, 3, rA, 2);
+  quad(rE, 0, rE, 1, rE, 2, rE, 3);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.computeVertexNormals();
   return g;
 }
@@ -831,8 +901,83 @@ export function buildCurve(id, pts, seed, colors) {
   const g = new THREE.Group();
   g.userData.assetId = id;
   const bodyC = (colors && colors.body) || def.colors.body;
+  if (def.kind === 'stackwall') {
+    const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)));
+    const len = curve.getLength();
+    const n = Math.min(400, Math.max(2, Math.round(len / 0.52)));
+    const P = curve.getSpacedPoints(n);
+    const base = new THREE.Color(bodyC);
+    for (let i = 0; i < n; i++) {
+      const p0 = P[i], p1 = P[i + 1];
+      const mid = p0.clone().add(p1).multiplyScalar(0.5);
+      const seg = p1.clone().sub(p0);
+      const yaw = Math.atan2(seg.x, seg.z);
+      const segLen = Math.hypot(seg.x, seg.z) + 0.02;
+      for (let row = 0; row < 3; row++) {
+        const shade = 0.85 + R() * 0.3;
+        const off = (row % 2 ? 0.5 : 0) * 0.0; // rows stay aligned along the curve
+        const me = new THREE.Mesh(
+          new THREE.BoxGeometry(0.28, 0.21, segLen),
+          mat(base.clone().multiplyScalar(shade).getHex(), { flat: true, r: 1 }));
+        me.position.set(mid.x, (p0.y + p1.y) / 2 + 0.11 + row * 0.22, mid.z);
+        me.rotation.y = yaw + (R() - 0.5) * 0.04;
+        me.userData.tint = 'body';
+        me.userData.shade = shade;
+        me.castShadow = me.receiveShadow = true;
+        g.add(me);
+      }
+      // cap stone
+      const cap = new THREE.Mesh(
+        new THREE.BoxGeometry(0.34, 0.06, segLen),
+        mat(base.clone().multiplyScalar(0.75).getHex(), { flat: true, r: 1 }));
+      cap.position.set(mid.x, (p0.y + p1.y) / 2 + 0.69, mid.z);
+      cap.rotation.y = yaw;
+      cap.userData.tint = 'body';
+      cap.userData.shade = 0.75;
+      cap.castShadow = cap.receiveShadow = true;
+      g.add(cap);
+    }
+    return g;
+  }
+  if (def.kind === 'fence') {
+    const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)));
+    const len = curve.getLength();
+    const nPosts = Math.min(200, Math.max(2, Math.round(len / 1.8) + 1));
+    const P = curve.getSpacedPoints(nPosts - 1);
+    const m = mat(new THREE.Color(bodyC).getHex(), { r: 0.9 });
+    const addPart = (geo, x, y, z, yaw) => {
+      const me = new THREE.Mesh(geo, m);
+      me.position.set(x, y, z);
+      me.rotation.y = yaw;
+      me.userData.tint = 'body';
+      me.castShadow = me.receiveShadow = true;
+      g.add(me);
+    };
+    for (const p of P) addPart(new THREE.BoxGeometry(0.09, 1.0, 0.09), p.x, p.y + 0.5, p.z, 0);
+    for (let i = 0; i < P.length - 1; i++) {
+      const p0 = P[i], p1 = P[i + 1];
+      const mid = p0.clone().add(p1).multiplyScalar(0.5);
+      const seg = p1.clone().sub(p0);
+      const yaw = Math.atan2(seg.x, seg.z);
+      const segLen = Math.hypot(seg.x, seg.z);
+      const ymid = (p0.y + p1.y) / 2;
+      addPart(new THREE.BoxGeometry(0.05, 0.08, segLen), mid.x, ymid + 0.35, mid.z, yaw);
+      addPart(new THREE.BoxGeometry(0.05, 0.08, segLen), mid.x, ymid + 0.78, mid.z, yaw);
+      const nPickets = Math.max(1, Math.round(segLen / 0.36));
+      for (let k = 0; k < nPickets; k++) {
+        const t = (k + 0.5) / nPickets;
+        const px = p0.x + seg.x * t, pz = p0.z + seg.z * t, py = p0.y + seg.y * t;
+        addPart(new THREE.BoxGeometry(0.11, 0.95, 0.04), px, py + 0.5, pz, yaw + Math.PI / 2);
+      }
+    }
+    return g;
+  }
   if (def.kind === 'sweep') {
     const m = dsMat(new THREE.Color(bodyC).getHex(), { flat: true, r: 0.95 });
+    if (def.tex) {
+      m.map = detailTexture(def.tex, { desat: def.texDesat !== false });
+      m.flatShading = false;
+    }
     const me = new THREE.Mesh(sweepGeo(pts, def.width, def.height), m);
     me.castShadow = def.height > 0.2;
     me.receiveShadow = true;
