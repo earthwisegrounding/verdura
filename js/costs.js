@@ -9,7 +9,7 @@ export const UNIT_COSTS = {
   // Trees priced as typical container/landscape-size stock installed, not
   // mature specimens (5-7 ft container tree installed runs ~$150-400).
   oak: 300, pine: 250, cypress: 180, dougfir: 300, maple: 400, birch: 250, jacaranda: 350,
-  shrub: 65, hedge: 90, flowers: 250, flowersrect: 275, grasstuft: 45, rose: 70, lavender: 35, rhodie: 90, fern: 45,
+  shrub: 65, hedge: 90, flowers: 250, flowersrect: 275, grasstuft: 45, rose: 70, lavender: 35, rhodie: 90, hydrangea: 85, fern: 45,
   boulder: 350, stepstones: 150, gravel: 175,
   patio: 1500, path: 400,
   pergola: 4000, raisedbed: 350, arch: 450, bench: 400, firepit: 900,
