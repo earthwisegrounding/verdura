@@ -18,10 +18,6 @@
 <header id="topbar">
   <button id="menu-btn" title="Tools & elements">☰</button>
   <div id="brand">🌿 <span class="brandname">Verdura</span></div>
-  <nav id="modes">
-    <button id="mode-design" class="mode active">Design</button>
-    <button id="mode-photo" class="mode">From Photo</button>
-  </nav>
   <div id="actions">
     <button id="btn-new" title="Clear the current mode">New</button>
     <button id="btn-undo" title="Undo (Ctrl+Z)">↩ Undo</button>
@@ -35,7 +31,6 @@
     <span class="sep"></span>
     <button id="btn-top" class="design-only" title="Top-down view">Top</button>
     <button id="btn-grid" class="design-only" title="Toggle grid (G)">Grid</button>
-    <label id="sunwrap" title="Time of day">☀️<input id="sun" type="range" min="0.05" max="0.95" step="0.01" value="0.4"></label>
   </div>
 </header>
 <div id="main">
@@ -46,7 +41,6 @@
         <button class="tool active" data-tool="select">🖱️ Select</button>
         <button class="tool design-only" data-tool="sculpt-up">⛰️ Raise</button>
         <button class="tool design-only" data-tool="sculpt-down">🕳️ Lower</button>
-        <button class="tool photo-only" data-tool="clone">🩹 Erase</button>
       </div>
       <div class="design-only">
         <h3>Ground paint</h3>
@@ -72,17 +66,10 @@
         <button id="sel-del" class="danger">Delete</button>
       </div>
     </div>
-    <div id="photo-panel" class="floating photo-only">
-      <h3>Photo</h3>
-      <button id="btn-photo">Upload photo…</button>
-      <div id="photo-status">Upload a photo of your yard to model it in 3D.</div>
-      <label class="slider hidden" id="horizonwrap">Horizon<input id="horizon" type="range" min="0.2" max="0.8" step="0.005" value="0.5"></label>
-    <label class="slider hidden" id="scalewrap" title="Stretch the reconstructed scene so plants look the right size">Scene size<input id="scenescale" type="range" min="0.5" max="6" step="0.1" value="1.5"></label>
-      <label class="slider hidden" id="shadowwrap">Shadows<input id="shadow" type="range" min="0" max="0.8" step="0.01" value="0.35"></label>
-    </div>
     <div id="est-panel" class="floating">
       <h3 id="est-head" title="Collapse / expand"><span class="chev">▾</span> 💲 Estimate <span id="est-total">$0</span></h3>
       <div id="est-rows"></div>
+      <button id="est-add">＋ Add line item (pruning, digging, debris removal…)</button>
       <div class="row">
         <button id="est-print">🖨 Print / PDF</button>
         <button id="est-email">✉️ Email</button>
@@ -97,7 +84,6 @@
   </div>
 </div>
 <input type="file" id="file-import" accept="application/json" hidden>
-<input type="file" id="file-photo" accept="image/*" hidden>
 <script type="module" src="js/app.js?v=2"></script>
 </body>
 </html>

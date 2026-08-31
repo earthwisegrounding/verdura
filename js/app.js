@@ -81,16 +81,16 @@ let active = design;
 /* ================= DOM refs ================= */
 const $ = id => document.getElementById(id);
 const hintEl = $('hint'), statusEl = $('photo-status');
-const sunSlider = $('sun'), brushSlider = $('brush');
+const brushSlider = $('brush');
 const selPanel = $('sel-panel'), selName = $('sel-name'), selRot = $('sel-rot'), selScale = $('sel-scale');
-const horizonSlider = $('horizon'), shadowSlider = $('shadow'), scaleSlider = $('scenescale');
 
-function setStatus(t) { statusEl.textContent = t; }
+
+function setStatus(t) { if (statusEl) statusEl.textContent = t; }
 function setHint(t) { hintEl.textContent = t; }
 
 /* ================= sun / sky ================= */
 function updateSun() {
-  const t = +sunSlider.value;
+  const t = 0.5; // fixed midday sun — brightest, clearest client renders
   const a = t * Math.PI;
   const el = Math.sin(a), az = Math.cos(a);
   design.sun.position.set(az * 35, 5 + el * 32, 10);
@@ -155,6 +155,7 @@ function curveRadius(item) {
 /* ================= cost estimate ================= */
 let priceOverrides = {};
 let qtyOverrides = {};
+let customLines = []; // landscaper-entered services: {id, label, amount}
 
 function curveLenFt(world, it) {
   const pts = resolveCurvePts(world, it).map(pt => new THREE.Vector3(...pt));
@@ -221,6 +222,10 @@ function estimateData() {
       rows.push({ kind: 'paint', name: paint.name, color: paint.c, sqft, rate, line });
     });
   }
+  for (const cl of customLines) {
+    total += cl.amount || 0;
+    rows.push({ kind: 'custom', cl });
+  }
   return { rows, total, excluded };
 }
 
@@ -238,10 +243,15 @@ function updateEstimate() {
     } else if (r.kind === 'curve') {
       html += `<div class="est-row"><span class="est-name">${r.def.icon} ${r.def.name.replace(' (draw)', '')} · ${r.ft} ft${r.manual ? ' ✎' : ''}</span>` +
         `<span class="est-unit">$<input type="number" min="0" step="1" data-item="${r.it.id}" value="${r.cost}" title="Edit to set this item's cost"></span></div>`;
-    } else {
+    } else if (r.kind === 'paint') {
       html += `<div class="est-row"><span class="est-name"><span class="paintchip" style="background:${r.color}"></span>${r.name} · ~${r.sqft.toLocaleString()} sq ft</span>` +
         `<span class="est-unit">$<input type="number" min="0" step="0.05" data-paint="${r.name}" value="${r.rate}" title="$ per sq ft"></span>` +
         `<span class="est-line">$${r.line.toLocaleString()}</span></div>`;
+    } else {
+      const esc = (r.cl.label || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+      html += `<div class="est-row"><input type="text" class="clabel" placeholder="Service (pruning, debris removal…)" data-clabel="${r.cl.id}" value="${esc}">` +
+        `<span class="est-unit">$<input type="number" min="0" step="1" data-camount="${r.cl.id}" value="${r.cl.amount || 0}"></span>` +
+        `<button class="cdel" data-cdel="${r.cl.id}" title="Remove line">×</button></div>`;
     }
   }
   rowsEl.innerHTML = html || '<div class="est-empty">Nothing estimated yet — add elements to the design.</div>';
@@ -255,6 +265,7 @@ function estimateLinesText() {
   const lines = rows.map(r => {
     if (r.kind === 'group') return `${r.qty} x ${r.def.name} @ $${r.unit.toLocaleString()} = $${r.line.toLocaleString()}`;
     if (r.kind === 'curve') return `${r.def.name.replace(' (draw)', '')} (${r.ft} linear ft) = $${r.cost.toLocaleString()}`;
+    if (r.kind === 'custom') return `${r.cl.label || 'Additional service'} = $${(r.cl.amount || 0).toLocaleString()}`;
     return `${r.name} (~${r.sqft.toLocaleString()} sq ft @ $${r.rate}/sq ft) = $${r.line.toLocaleString()}`;
   });
   lines.push('', `TOTAL ESTIMATE: $${total.toLocaleString()}`);
@@ -269,6 +280,7 @@ function printEstimate() {
   const tr = rows.map(r => {
     if (r.kind === 'group') return `<tr><td>${r.def.name}</td><td>${r.qty}</td><td>$${r.unit.toLocaleString()}</td><td>$${r.line.toLocaleString()}</td></tr>`;
     if (r.kind === 'curve') return `<tr><td>${r.def.name.replace(' (draw)', '')} — ${r.ft} linear ft</td><td>1</td><td>—</td><td>$${r.cost.toLocaleString()}</td></tr>`;
+    if (r.kind === 'custom') { const esc = (r.cl.label || 'Additional service').replace(/&/g, '&amp;').replace(/</g, '&lt;'); return `<tr><td>${esc}</td><td>—</td><td>—</td><td>$${(r.cl.amount || 0).toLocaleString()}</td></tr>`; }
     return `<tr><td>${r.name} — ~${r.sqft.toLocaleString()} sq ft</td><td>—</td><td>$${r.rate}/sq ft</td><td>$${r.line.toLocaleString()}</td></tr>`;
   }).join('');
   const html = `<!DOCTYPE html><html><head><title>Landscape Estimate</title><style>
@@ -404,6 +416,7 @@ function currentStateStr() {
   return JSON.stringify({
     design: { items: design.items, terrain: design.terrain.serialize() },
     photo: { items: photo.items },
+    custom: customLines,
   });
 }
 function pushUndo(str = currentStateStr()) {
@@ -417,6 +430,7 @@ function undo() {
   design.items = st.design.items;
   design.terrain.load(st.design.terrain);
   photo.items = st.photo.items;
+  customLines = st.custom || [];
   rebuildItems(design);
   rebuildItems(photo);
 }
@@ -778,6 +792,12 @@ $('est-rows').addEventListener('change', e => {
     const v = parseFloat(inp.value);
     if (isNaN(v) || v < 0) delete priceOverrides['paint:' + inp.dataset.paint];
     else priceOverrides['paint:' + inp.dataset.paint] = v;
+  } else if (inp.dataset.clabel) {
+    const cl = customLines.find(x => x.id === +inp.dataset.clabel);
+    if (cl) cl.label = inp.value;
+  } else if (inp.dataset.camount) {
+    const cl = customLines.find(x => x.id === +inp.dataset.camount);
+    if (cl) cl.amount = Math.max(0, parseFloat(inp.value) || 0);
   } else if (inp.dataset.item) {
     const it = itemFor(active, +inp.dataset.item);
     if (it) {
@@ -789,7 +809,22 @@ $('est-rows').addEventListener('change', e => {
   updateEstimate();
 });
 $('btn-est').addEventListener('click', () => $('est-panel').classList.toggle('hidden'));
-$('est-head').addEventListener('click', () => $('est-panel').classList.toggle('collapsed'));
+$('est-head').addEventListener('pointerup', () => $('est-panel').classList.toggle('collapsed'));
+$('est-rows').addEventListener('click', e => {
+  const del = e.target.dataset && e.target.dataset.cdel;
+  if (del) {
+    pushUndo();
+    customLines = customLines.filter(x => x.id !== +del);
+    updateEstimate();
+  }
+});
+$('est-add').addEventListener('click', () => {
+  pushUndo();
+  customLines.push({ id: nextId++, label: '', amount: 0 });
+  updateEstimate();
+  const inputs = document.querySelectorAll('#est-rows input.clabel');
+  if (inputs.length) inputs[inputs.length - 1].focus();
+});
 $('est-print').addEventListener('click', printEstimate);
 $('est-email').addEventListener('click', emailEstimate);
 
@@ -886,8 +921,6 @@ function buildPalette() {
 function setMode(name) {
   active = name === 'photo' ? photo : design;
   document.body.dataset.mode = name;
-  $('mode-design').classList.toggle('active', name === 'design');
-  $('mode-photo').classList.toggle('active', name === 'photo');
   design.controls.enabled = name === 'design';
   photo.controls.enabled = name === 'photo';
   if (tool.kind === 'clone' && name === 'design') setTool({ kind: 'select' });
@@ -897,7 +930,6 @@ function setMode(name) {
   updateEstimate();
   updateHint();
 }
-$('mode-design').addEventListener('click', () => setMode('design'));
 $('menu-btn').addEventListener('click', () => document.body.classList.toggle('sidebar-open'));
 $('draw-done').addEventListener('click', finishDraw);
 $('draw-cancel').addEventListener('click', () => {
@@ -905,7 +937,6 @@ $('draw-cancel').addEventListener('click', () => {
   clearDrawPreview();
   updateDrawActions();
 });
-$('mode-photo').addEventListener('click', () => setMode('photo'));
 
 /* ================= photo upload ================= */
 async function handlePhotoDataUrl(dataUrl) {
@@ -946,40 +977,8 @@ async function handlePhotoDataUrl(dataUrl) {
 }
 window.__verdura = { handlePhotoDataUrl, design, photo, renderer, Photo }; // for testing/automation
 
-$('btn-photo').addEventListener('click', () => $('file-photo').click());
-$('file-photo').addEventListener('change', e => {
-  const f = e.target.files[0];
-  if (!f) return;
-  const r = new FileReader();
-  r.onload = () => handlePhotoDataUrl(r.result);
-  r.readAsDataURL(f);
-  e.target.value = '';
-});
-horizonSlider.addEventListener('input', () => Photo.setHorizon(photo, +horizonSlider.value));
-shadowSlider.addEventListener('input', () => { if (photo.shadowMat) photo.shadowMat.opacity = +shadowSlider.value; });
-
-// Rescale the reconstructed scene about the camera origin: the photo view is
-// unchanged, but the metric size grows so placed elements look right.
 let sceneScale = 1;
-function applySceneScale(v) {
-  if (photo.mode !== 'depth') return;
-  const ratio = v / sceneScale;
-  sceneScale = v;
-  photo.photoRoot.scale.setScalar(v);
-  for (const it of photo.items) { it.x *= ratio; it.y *= ratio; it.z *= ratio; }
-  for (const it of photo.items) {
-    const obj = objectFor(photo, it.id);
-    if (obj) obj.position.set(it.x, it.y, it.z);
-  }
-  if (photo.center) {
-    photo.controls.target.copy(photo.center).multiplyScalar(v);
-    photo.sun.target.position.copy(photo.center).multiplyScalar(v);
-    photo.controls.maxDistance = 40 * v;
-    photo.controls.update();
-  }
-  select(photo, photo.selected);
-}
-scaleSlider.addEventListener('input', () => applySceneScale(+scaleSlider.value));
+function applySceneScale(v) { sceneScale = v; }
 
 /* ================= save / load ================= */
 function fullState() {
@@ -988,13 +987,9 @@ function fullState() {
     nextId,
     prices: priceOverrides,
     qtys: qtyOverrides,
-    design: { items: design.items, terrain: design.terrain.serialize(), sun: +sunSlider.value },
-    photo: {
-      items: photo.items, mode: photo.mode,
-      image: photo.texCanvas ? photo.texCanvas.toDataURL('image/jpeg', 0.88) : (photo.imageDataUrl || null),
-      depth: photo.depthDataUrl || null,
-      horizon: +horizonSlider.value, scale: sceneScale,
-    },
+    custom: customLines,
+    design: { items: design.items, terrain: design.terrain.serialize() },
+    photo: null,
   };
 }
 
@@ -1002,41 +997,10 @@ async function restoreState(st) {
   nextId = st.nextId || 1;
   priceOverrides = st.prices || {};
   qtyOverrides = st.qtys || {};
+  customLines = st.custom || [];
   design.items = st.design.items || [];
   design.terrain.load(st.design.terrain);
-  if (st.design.sun != null) sunSlider.value = st.design.sun;
-  photo.items = st.photo?.items || [];
-  if (st.photo?.image) {
-    const img = await Photo.loadImage(st.photo.image);
-    photo.canvas = Photo.makePhotoCanvas(img, 1600);
-    photo.imageDataUrl = st.photo.image;
-    if (st.photo.mode === 'depth' && st.photo.depth) {
-      const dimg = await Photo.loadImage(st.photo.depth);
-      const dc = document.createElement('canvas');
-      dc.width = dimg.width; dc.height = dimg.height;
-      dc.getContext('2d').drawImage(dimg, 0, 0);
-      photo.depthDataUrl = st.photo.depth;
-      Photo.buildDepthWorld(photo, photo.canvas, dc);
-      photo.mode = 'depth';
-      $('horizonwrap').classList.add('hidden');
-      $('scalewrap').classList.remove('hidden');
-      sceneScale = 1;
-      const sv = st.photo.scale ?? 1.5;
-      scaleSlider.value = sv;
-      photo.photoRoot.scale.setScalar(sv);
-      sceneScale = sv;
-      photo.controls.target.copy(photo.center).multiplyScalar(sv);
-      photo.controls.update();
-    } else {
-      horizonSlider.value = st.photo.horizon ?? 0.5;
-      Photo.buildFlatWorld(photo, photo.canvas, +horizonSlider.value);
-      photo.mode = 'flat';
-      $('horizonwrap').classList.remove('hidden');
-    }
-    $('shadowwrap').classList.remove('hidden');
-    photo.ready = true;
-    setStatus('Photo restored.');
-  }
+  photo.items = [];
   rebuildItems(design);
   rebuildItems(photo);
   updateSun();
@@ -1084,7 +1048,6 @@ $('btn-top').addEventListener('click', () => {
   design.controls.update();
 });
 $('btn-grid').addEventListener('click', () => { design.grid.visible = !design.grid.visible; });
-sunSlider.addEventListener('input', updateSun);
 
 /* ================= starter scene ================= */
 function starterScene() {

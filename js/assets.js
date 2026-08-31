@@ -208,6 +208,48 @@ function grasstuft(R) {
   }
   return g;
 }
+function dougfir(R) {
+  const g = new THREE.Group();
+  const h = 4.5 + R() * 1.5;
+  add(g, new THREE.CylinderGeometry(0.1, 0.2, h * 0.35, 6), mat(0x4a3626, { r: 1 }), [0, h * 0.17, 0]);
+  const c = mat(0x2c4a34, { flat: true });
+  for (let i = 0; i < 5; i++) {
+    const f = 1 - i * 0.17;
+    add(g, new THREE.ConeGeometry(1.0 * f, h * 0.3, 8), c, [0, h * (0.24 + i * 0.16), 0]);
+  }
+  return g;
+}
+function rhodie(R) {
+  const g = shrub(R);
+  for (let i = 0; i < 10; i++) {
+    const ang = R() * Math.PI * 2, r = 0.25 + R() * 0.35;
+    add(g, new THREE.IcosahedronGeometry(0.09, 1), mat(0xe268a8, { r: 0.6, flat: true }),
+      [Math.cos(ang) * r, 0.5 + R() * 0.4, Math.sin(ang) * r]);
+  }
+  return g;
+}
+function fern(R) {
+  const g = new THREE.Group();
+  for (let i = 0; i < 14; i++) {
+    const ang = (i / 14) * Math.PI * 2 + R() * 0.4;
+    const fr = new THREE.Group();
+    fr.rotation.y = ang;
+    add(fr, new THREE.ConeGeometry(0.09, 1.1, 4), mat(0x3f6b35, { flat: true }), [0.42, 0.3, 0], [0, 0, -1.95], [1, 1, 0.3]);
+    g.add(fr);
+  }
+  return g;
+}
+function flowersRect(R) {
+  const g = new THREE.Group();
+  add(g, new THREE.BoxGeometry(2.2, 0.14, 1.1), mat(SOIL, { r: 1 }), [0, 0.07, 0]);
+  const cols = [0xe45f74, 0xf2c14e, 0xf5f2ea, 0xb372d7, 0xe97733];
+  for (let i = 0; i < 26; i++) {
+    const x = (R() - 0.5) * 2.0, z = (R() - 0.5) * 0.9, hh = 0.18 + R() * 0.22;
+    add(g, new THREE.CylinderGeometry(0.012, 0.012, hh, 4), mat(0x4e7a3a), [x, 0.14 + hh / 2, z]);
+    add(g, new THREE.SphereGeometry(0.05, 6, 5), mat(pick(R, cols), { r: 0.6 }), [x, 0.14 + hh, z]);
+  }
+  return g;
+}
 function rose(R) {
   const g = shrub(R);
   for (let i = 0; i < 9; i++) {
@@ -431,19 +473,22 @@ function pot(R) {
 }
 
 export const ASSETS = [
-  { id: 'oak',       name: 'Oak tree',        icon: '🌳', cat: 'Trees',            fp: 1.7, build: oak },
-  { id: 'pine',      name: 'Pine',            icon: '🌲', cat: 'Trees',            fp: 1.1, build: pine },
-  { id: 'cypress',   name: 'Cypress',         icon: '🌲', cat: 'Trees',            fp: 0.7, build: cypress },
-  { id: 'palm',      name: 'Palm',            icon: '🌴', cat: 'Trees',            fp: 1.4, build: palm },
+  { id: 'oak',       name: 'Garry oak',       icon: '🌳', cat: 'Trees',            fp: 1.7, build: oak },
+  { id: 'pine',      name: 'Shore pine',      icon: '🌲', cat: 'Trees',            fp: 1.1, build: pine },
+  { id: 'cypress',   name: 'Arborvitae',      icon: '🌲', cat: 'Trees',            fp: 0.7, build: cypress },
+  { id: 'dougfir',   name: 'Douglas fir',     icon: '🌲', cat: 'Trees',            fp: 1.5, build: dougfir },
   { id: 'maple',     name: 'Japanese maple',  icon: '🍁', cat: 'Trees',            fp: 1.4, build: maple },
-  { id: 'birch',     name: 'Birch',           icon: '🪵', cat: 'Trees',            fp: 1.1, build: birch },
-  { id: 'jacaranda', name: 'Jacaranda',       icon: '🌺', cat: 'Trees',            fp: 3.4, build: oak },
-  { id: 'shrub',     name: 'Shrub',           icon: '🌿', cat: 'Shrubs & flowers', fp: 0.7, build: shrub },
+  { id: 'birch',     name: 'Paper birch',     icon: '🪵', cat: 'Trees',            fp: 1.1, build: birch },
+  { id: 'jacaranda', name: 'Bigleaf maple',   icon: '🍁', cat: 'Trees',            fp: 3.4, build: oak },
+  { id: 'shrub',     name: 'Evergreen huckleberry', icon: '🫐', cat: 'Shrubs & flowers', fp: 0.7, build: shrub },
   { id: 'hedge',     name: 'Hedge',           icon: '🟩', cat: 'Shrubs & flowers', fp: 0.8, build: hedge },
   { id: 'flowers',   name: 'Flower bed',      icon: '🌸', cat: 'Shrubs & flowers', fp: 1.1, build: flowers },
   { id: 'grasstuft', name: 'Ornamental grass',icon: '🌾', cat: 'Shrubs & flowers', fp: 0.5, build: grasstuft },
   { id: 'rose',      name: 'Rose bush',       icon: '🌹', cat: 'Shrubs & flowers', fp: 0.7, build: rose },
   { id: 'lavender',  name: 'Lavender',        icon: '💜', cat: 'Shrubs & flowers', fp: 0.5, build: lavender },
+  { id: 'rhodie',    name: 'Rhododendron',    icon: '🌺', cat: 'Shrubs & flowers', fp: 0.8, build: rhodie },
+  { id: 'fern',      name: 'Sword fern',      icon: '🌿', cat: 'Shrubs & flowers', fp: 0.7, build: fern },
+  { id: 'flowersrect', name: 'Flower bed (rect)', icon: '🌷', cat: 'Shrubs & flowers', fp: 1.3, build: flowersRect },
   { id: 'boulder',   name: 'Boulder',         icon: '🪨', cat: 'Hardscape',        fp: 0.9, build: boulder },
   { id: 'stepstones',name: 'Stepping stones', icon: '⬜', cat: 'Hardscape',        fp: 1.2, build: stepstones },
   { id: 'gravel',    name: 'Gravel bed',      icon: '▫️', cat: 'Hardscape',        fp: 1.2, build: gravel },

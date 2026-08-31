@@ -181,3 +181,17 @@ body[data-mode="design"] #photo-panel { display: none !important; }
 #est-panel.collapsed .row,
 #est-panel.collapsed #est-note { display: none; }
 #est-panel.collapsed { max-height: none; }
+
+/* ---- custom estimate lines ---- */
+#est-add { margin-top: 8px; width: 100%; padding: 6px; border-radius: 7px; border: 1px dashed var(--line); background: transparent; color: var(--dim); cursor: pointer; font-size: 12px; }
+#est-add:hover { border-color: var(--accent2); color: var(--text); }
+.est-row input.clabel { flex: 1; min-width: 0; background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; color: var(--text); padding: 3px 6px; font-size: 12px; }
+.est-row button.cdel { border: 0; background: transparent; color: var(--dim); cursor: pointer; font-size: 14px; padding: 0 2px; }
+.est-row button.cdel:hover { color: #ff9d9d; }
+
+/* ---- mobile topbar wraps instead of clipping ---- */
+@media (max-width: 760px) {
+  #topbar { flex-wrap: wrap; height: auto; padding: 6px 8px; row-gap: 6px; overflow-x: visible; }
+  #actions { margin-left: 0; flex-wrap: wrap; row-gap: 6px; }
+  #sidebar { top: 0; padding-top: 12px; z-index: 60; }
+}
