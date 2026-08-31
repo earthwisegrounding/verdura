@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Verdura — Landscape Studio</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mode="design">
+<header id="topbar">
+  <button id="menu-btn" title="Tools & elements">☰</button>
+  <div id="brand">🌿 <span class="brandname">Verdura</span></div>
+  <nav id="modes">
+    <button id="mode-design" class="mode active">Design</button>
+    <button id="mode-photo" class="mode">From Photo</button>
+  </nav>
+  <div id="actions">
+    <button id="btn-new" title="Clear the current mode">New</button>
+    <button id="btn-undo" title="Undo (Ctrl+Z)">↩ Undo</button>
+    <span class="sep"></span>
+    <button id="btn-save" title="Save to this browser">Save</button>
+    <button id="btn-load" title="Load browser save">Load</button>
+    <button id="btn-export" title="Download design as a file">Export</button>
+    <button id="btn-import" title="Open a design file">Import</button>
+    <button id="btn-shot" title="Download a rendered image">📷</button>
+    <button id="btn-est" title="Show/hide cost estimate">💲</button>
+    <span class="sep"></span>
+    <button id="btn-top" class="design-only" title="Top-down view">Top</button>
+    <button id="btn-grid" class="design-only" title="Toggle grid (G)">Grid</button>
+    <label id="sunwrap" title="Time of day">☀️<input id="sun" type="range" min="0.05" max="0.95" step="0.01" value="0.4"></label>
+  </div>
+</header>
+<div id="main">
+  <aside id="sidebar">
+    <section>
+      <h3>Tools</h3>
+      <div class="grid tools">
+        <button class="tool active" data-tool="select">🖱️ Select</button>
+        <button class="tool design-only" data-tool="sculpt-up">⛰️ Raise</button>
+        <button class="tool design-only" data-tool="sculpt-down">🕳️ Lower</button>
+        <button class="tool photo-only" data-tool="clone">🩹 Erase</button>
+      </div>
+      <div class="design-only">
+        <h3>Ground paint</h3>
+        <div class="grid" id="paints"></div>
+      </div>
+      <label class="slider">Brush size<input id="brush" type="range" min="0.5" max="6" step="0.1" value="2"></label>
+    </section>
+    <section id="palette">
+      <h3>Add elements</h3>
+      <div id="palette-groups"></div>
+    </section>
+  </aside>
+  <div id="viewport">
+    <canvas id="c"></canvas>
+    <div id="sel-panel" class="floating hidden">
+      <h3 id="sel-name">Selected</h3>
+      <label class="slider">Rotate<input id="sel-rot" type="range" min="0" max="360" step="1" value="0"></label>
+      <label class="slider">Scale<input id="sel-scale" type="range" min="0.3" max="3" step="0.05" value="1"></label>
+      <label class="colorrow hidden" id="row-body">Body color<input type="color" id="col-body" value="#d9d2c3"></label>
+      <label class="colorrow hidden" id="row-roof">Roof / accent<input type="color" id="col-roof" value="#6b6560"></label>
+      <button id="col-reset" class="hidden">Reset colors</button>
+      <div class="row">
+        <button id="sel-del" class="danger">Delete</button>
+      </div>
+    </div>
+    <div id="photo-panel" class="floating photo-only">
+      <h3>Photo</h3>
+      <button id="btn-photo">Upload photo…</button>
+      <div id="photo-status">Upload a photo of your yard to model it in 3D.</div>
+      <label class="slider hidden" id="horizonwrap">Horizon<input id="horizon" type="range" min="0.2" max="0.8" step="0.005" value="0.5"></label>
+    <label class="slider hidden" id="scalewrap" title="Stretch the reconstructed scene so plants look the right size">Scene size<input id="scenescale" type="range" min="0.5" max="6" step="0.1" value="1.5"></label>
+      <label class="slider hidden" id="shadowwrap">Shadows<input id="shadow" type="range" min="0" max="0.8" step="0.01" value="0.35"></label>
+    </div>
+    <div id="est-panel" class="floating">
+      <h3>💲 Estimate <span id="est-total">$0</span></h3>
+      <div id="est-rows"></div>
+      <div class="row">
+        <button id="est-print">🖨 Print / PDF</button>
+        <button id="est-email">✉️ Email</button>
+      </div>
+      <div id="est-note"></div>
+    </div>
+    <div id="draw-actions" class="hidden">
+      <button id="draw-done">✓ Done</button>
+      <button id="draw-cancel">✕ Cancel</button>
+    </div>
+    <div id="hint"></div>
+  </div>
+</div>
+<input type="file" id="file-import" accept="application/json" hidden>
+<input type="file" id="file-photo" accept="image/*" hidden>
+<script type="module" src="js/app.js?v=2"></script>
+</body>
+</html>
