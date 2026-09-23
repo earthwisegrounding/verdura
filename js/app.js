@@ -31,6 +31,36 @@ const REGION = activeRegion();
   if (brandEl) brandEl.textContent = REGION.brand;
 }
 
+/* ---- customer quote mode: prices hidden, design goes to the business ---- */
+const QUOTE = (typeof window !== 'undefined' && window.__VERDURA_QUOTE) || null;
+if (QUOTE) {
+  document.body.classList.add('quote-mode');
+  if (QUOTE.brand) {
+    const b = document.querySelector('#brand .brandname');
+    if (b) b.textContent = QUOTE.brand;
+    document.title = QUOTE.title || QUOTE.brand;
+  }
+  if (QUOTE.mark) {
+    const brand = document.getElementById('brand');
+    if (brand) brand.firstChild.textContent = QUOTE.mark + ' ';
+  }
+  const bar = document.createElement('div');
+  bar.id = 'quote-bar';
+  bar.innerHTML = '<button id="quote-send">✉️ Send my design for a free quote</button>';
+  document.getElementById('viewport').appendChild(bar);
+  document.getElementById('quote-send').addEventListener('click', () => {
+    downloadText('my-landscape-design.json', JSON.stringify(fullState()));
+    setHint('Design file downloaded — attach it to the email that opens ✓');
+    const subject = encodeURIComponent('Quote request — my 3D landscape design');
+    const body = encodeURIComponent(
+      'Hi ' + (QUOTE.business || '') + ',\n\n' +
+      'I designed my yard in your online Design Studio and would like a free quote.\n' +
+      'My design file (my-landscape-design.json) just downloaded to my computer — I have attached it to this email.\n\n' +
+      'Name:\nPhone:\nProperty address:\n\nThank you!');
+    setTimeout(() => { window.location.href = 'mailto:' + QUOTE.email + '?subject=' + subject + '&body=' + body; }, 600);
+  });
+}
+
 /* ================= renderer ================= */
 const canvas = document.getElementById('c');
 const viewport = document.getElementById('viewport');

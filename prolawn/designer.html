@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Design Studio — Pro Lawn Care &amp; Landscaping</title>
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Ccircle cx='22' cy='22' r='21' fill='%2312271d' stroke='%23bd5c38' stroke-width='2'/%3E%3Cpath d='M9 29 L18 17 L23 24 L28 14 L35 29 Z' fill='%232e7d4f'/%3E%3Cpath d='M9 29 H35' stroke='%23bd5c38' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  #quote-back {
+    color: var(--dim); text-decoration: none; font-size: 12px; white-space: nowrap;
+    border: 1px solid var(--line); background: var(--panel2);
+    padding: 5px 10px; border-radius: 7px;
+  }
+  #quote-back:hover { border-color: var(--accent2); color: var(--text); }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mode="design">
+<header id="topbar">
+  <button id="menu-btn" title="Tools & elements">☰</button>
+  <a id="quote-back" href="prolawn/index.html">← Back to site</a>
+  <div id="brand">🌿 <span class="brandname">Pro Lawn Design Studio</span></div>
+  <div id="actions">
+    <button id="btn-new" title="Clear the design">New</button>
+    <button id="btn-undo" title="Undo (Ctrl+Z)">↩ Undo</button>
+    <span class="sep"></span>
+    <button id="btn-save" title="Save to this browser">Save</button>
+    <button id="btn-load" title="Load browser save">Load</button>
+    <button id="btn-export" title="Download design as a file">Export</button>
+    <button id="btn-import" title="Open a design file">Import</button>
+    <button id="btn-shot" title="Download a rendered image">📷</button>
+    <button id="btn-est" class="hidden" title="Show/hide cost estimate">💲</button>
+    <span class="sep"></span>
+    <button id="btn-top" class="design-only" title="Top-down view">Top</button>
+    <button id="btn-grid" class="design-only" title="Toggle grid (G)">Grid</button>
+  </div>
+</header>
+<div id="main">
+  <aside id="sidebar">
+    <section>
+      <h3>Tools</h3>
+      <div class="grid tools">
+        <button class="tool active" data-tool="select">🖱️ Select</button>
+        <button class="tool design-only" data-tool="sculpt-up">⛰️ Raise</button>
+        <button class="tool design-only" data-tool="sculpt-down">🕳️ Lower</button>
+      </div>
+      <div class="design-only">
+        <h3>Ground paint</h3>
+        <div class="grid" id="paints"></div>
+      </div>
+      <label class="slider">Brush size<input id="brush" type="range" min="0.5" max="6" step="0.1" value="2"></label>
+    </section>
+    <section id="palette">
+      <h3>Add elements</h3>
+      <div id="palette-groups"></div>
+    </section>
+  </aside>
+  <div id="viewport">
+    <canvas id="c"></canvas>
+    <div id="sel-panel" class="floating hidden">
+      <h3 id="sel-name">Selected</h3>
+      <label class="slider">Rotate<input id="sel-rot" type="range" min="0" max="360" step="1" value="0"></label>
+      <label class="slider">Scale<input id="sel-scale" type="range" min="0.3" max="3" step="0.05" value="1"></label>
+      <label class="colorrow hidden" id="row-body">Body color<input type="color" id="col-body" value="#d9d2c3"></label>
+      <label class="colorrow hidden" id="row-roof">Roof / accent<input type="color" id="col-roof" value="#6b6560"></label>
+      <button id="col-reset" class="hidden">Reset colors</button>
+      <div class="row">
+        <button id="sel-dup">Duplicate</button>
+        <button id="sel-del" class="danger">Delete</button>
+      </div>
+    </div>
+    <div id="est-panel" class="floating hidden">
+      <h3 id="est-head" title="Collapse / expand"><span class="chev">▾</span> 💲 Estimate <span id="est-total">$0</span></h3>
+      <div id="est-rows"></div>
+      <button id="est-add">＋ Add line item</button>
+      <div class="row">
+        <button id="est-print">🖨 Print / PDF</button>
+        <button id="est-email">✉️ Email</button>
+      </div>
+      <div id="est-note"></div>
+    </div>
+    <div id="draw-actions" class="hidden">
+      <button id="draw-done">✓ Done</button>
+      <button id="draw-cancel">✕ Cancel</button>
+    </div>
+    <div id="hint"></div>
+  </div>
+</div>
+<input type="file" id="file-import" accept="application/json" hidden>
+<script>
+window.__VERDURA_REGION = "co";
+window.__VERDURA_QUOTE = {
+  business: "Pro Lawn Care & Landscaping",
+  brand: "Pro Lawn Design Studio",
+  title: "Design Studio — Pro Lawn Care & Landscaping",
+  email: "prolawncareco@gmail.com",
+  mark: "🌿"
+};
+</script>
+<script type="module" src="js/app.js?v=2"></script>
+</body>
+</html>

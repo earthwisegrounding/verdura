@@ -183,6 +183,20 @@ body[data-mode="design"] #photo-panel { display: none !important; }
 #est-panel.collapsed #est-note { display: none; }
 #est-panel.collapsed { max-height: none; }
 
+/* ---- customer quote mode ---- */
+body.quote-mode #est-panel, body.quote-mode #btn-est { display: none !important; }
+#quote-bar { position: absolute; right: 14px; bottom: 48px; z-index: 25; }
+#quote-bar button {
+  border: 0; cursor: pointer; font-weight: 700; font-size: 13px;
+  padding: 12px 20px; border-radius: 999px; color: #0c1a10;
+  background: var(--accent); box-shadow: 0 6px 24px rgba(0,0,0,.45);
+}
+#quote-bar button:hover { filter: brightness(1.08); }
+@media (max-width: 760px) {
+  #quote-bar { right: 8px; bottom: 42px; }
+  #quote-bar button { padding: 10px 16px; font-size: 12px; }
+}
+
 /* ---- custom estimate lines ---- */
 #est-add { margin-top: 8px; width: 100%; padding: 6px; border-radius: 7px; border: 1px dashed var(--line); background: transparent; color: var(--dim); cursor: pointer; font-size: 12px; }
 #est-add:hover { border-color: var(--accent2); color: var(--text); }

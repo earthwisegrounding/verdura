@@ -3,3 +3,8 @@ node_modules/
 addon.py
 *.blend
 bigleaf_hydrangea_vgztealha_raw/
+
+# Pro Lawn: full-res photo originals (sites use the web/mid/full resized copies) and unused source images
+prolawn/assets/gallery/*.jpg
+prolawn/assets/logo-orig.jpg
+prolawn/assets/about.jpg
