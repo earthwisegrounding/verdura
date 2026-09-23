@@ -260,7 +260,7 @@
         <p class="pay-note">We accept cash, check, and all major credit cards. A 4% service fee applies to credit card payments.</p>
       </div>
       <div data-reveal="2">
-        <form class="quote-form" id="quote-form">
+        <form class="quote-form" id="quote-form" action="https://formspree.io/f/maenjnza" method="POST">
           <h3>Request a free quote</h3>
           <p>Tell us a little about your project and we'll reach out.</p>
           <div class="form-row">
@@ -280,8 +280,10 @@
             </select>
           </div>
           <div class="field"><label for="f-msg">Project details</label><textarea id="f-msg" name="message" placeholder="Tell us about your yard…"></textarea></div>
+          <input class="hp" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <p class="form-err" id="form-err" role="alert"></p>
           <button class="btn btn-solid" type="submit">Send quote request</button>
-          <p class="form-hint">Sends via your email app to prolawncareco@gmail.com — or just call us.</p>
+          <p class="form-hint">Goes straight to our inbox — or just call us at 719-250-0747.</p>
         </form>
       </div>
     </div>

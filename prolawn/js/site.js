@@ -53,18 +53,49 @@ addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') openLb(lbIndex + 1);
 });
 
-// Quote form → email app
-document.getElementById('quote-form').addEventListener('submit', e => {
+// Quote form → Formspree (falls back to the email app if it can't be reached)
+const quoteForm = document.getElementById('quote-form');
+quoteForm.addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target;
-  const subject = encodeURIComponent('Quote request — ' + f.service.value + ' (' + f.name.value + ')');
-  const body = encodeURIComponent(
-    'Name: ' + f.name.value +
-    '\nPhone: ' + f.phone.value +
-    '\nEmail: ' + f.email.value +
-    '\nService: ' + f.service.value +
-    '\n\n' + f.message.value);
-  location.href = 'mailto:prolawncareco@gmail.com?subject=' + subject + '&body=' + body;
+  const err = document.getElementById('form-err');
+  const btn = f.querySelector('button[type="submit"]');
+  const name = f.name.value.trim(), phone = f.phone.value.trim(), email = f.email.value.trim();
+  if (!phone && !email) {
+    err.textContent = 'Please add a phone number or email so we can get back to you.';
+    f.phone.focus();
+    return;
+  }
+  err.textContent = '';
+  const subject = 'Quote request — ' + f.service.value + ' (' + name + ')';
+  const payload = {
+    name, phone, email, service: f.service.value, message: f.message.value.trim(),
+    _subject: subject, _gotcha: f._gotcha.value,
+  };
+  if (email) payload._replyto = email;
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const res = await fetch(f.action, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('Formspree ' + res.status);
+    const first = name.split(' ')[0];
+    f.innerHTML =
+      '<div class="form-done" role="status" tabindex="-1">' +
+      '<h3>Thanks' + (first ? ', ' + first.replace(/[<>&"]/g, '') : '') + '!</h3>' +
+      '<p>Your quote request is in. We\'ll be in touch soon — need us sooner? Call <a href="tel:17192500747">719-250-0747</a>.</p></div>';
+    f.querySelector('.form-done').focus();
+  } catch {
+    btn.disabled = false;
+    btn.textContent = 'Send quote request';
+    err.textContent = 'We couldn\'t send that just now — opening your email app instead.';
+    const body = 'Name: ' + name + '\nPhone: ' + phone + '\nEmail: ' + email +
+      '\nService: ' + f.service.value + '\n\n' + payload.message;
+    location.href = 'mailto:prolawncareco@gmail.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  }
 });
 
 // Hero welcome audio

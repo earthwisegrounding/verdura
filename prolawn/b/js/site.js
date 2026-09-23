@@ -199,9 +199,9 @@
     }
   });
 
-  /* ---------- quote form -> email ---------- */
+  /* ---------- quote form -> Formspree (email app as fallback) ---------- */
   const form = $('#quote');
-  form.addEventListener('submit', e => {
+  form.addEventListener('submit', async e => {
     e.preventDefault();
     const err = $('#form-err');
     const name = form.elements.name;
@@ -228,7 +228,36 @@
       '\nEmail: ' + email +
       '\nInterested in: ' + (needs.join(', ') || '—') +
       '\n\n' + form.elements.message.value.trim();
-    location.href = 'mailto:prolawncareco@gmail.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+    const payload = {
+      name: name.value.trim(), phone, email,
+      interested_in: needs.join(', ') || '—',
+      message: form.elements.message.value.trim(),
+      _subject: subject, _gotcha: form.elements._gotcha.value,
+    };
+    if (email) payload._replyto = email;
+    const btn = $('button[type="submit"]', form);
+    const btnHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    try {
+      const res = await fetch(form.action, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('Formspree ' + res.status);
+      const first = name.value.trim().split(' ')[0].replace(/[<>&"]/g, '');
+      form.innerHTML =
+        '<div class="form-done" role="status" tabindex="-1">' +
+        '<h3>Thanks' + (first ? ', ' + first : '') + '!</h3>' +
+        '<p class="sub">Your quote request is in. We\'ll be in touch soon — need us sooner? Call <a href="tel:17192500747">719-250-0747</a>.</p></div>';
+      $('.form-done', form).focus();
+    } catch {
+      btn.disabled = false;
+      btn.innerHTML = btnHTML;
+      err.textContent = 'We couldn\'t send that just now — opening your email app instead.';
+      location.href = 'mailto:prolawncareco@gmail.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+    }
   });
 
   $('#yr').textContent = new Date().getFullYear();

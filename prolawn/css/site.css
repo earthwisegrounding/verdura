@@ -438,3 +438,13 @@ h2 em { font-style: italic; color: var(--clay-deep); }
   .masonry figure { margin-bottom: 10px; }
   .lb-prev { left: 8px; } .lb-next { right: 8px; }
 }
+
+/* Quote form: spam trap, errors, sent state */
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.form-err { color: var(--clay-deep); font-size: 14px; font-weight: 600; }
+.form-err:not(:empty) { margin-bottom: 12px; }
+.quote-form .btn:disabled { opacity: .7; cursor: progress; }
+.form-done { text-align: center; padding: 40px 8px; outline: none; }
+.form-done h3 { margin-bottom: 12px; }
+.form-done p { color: var(--ink-soft); font-size: 15.5px; }
+.form-done a { color: var(--clay-deep); font-weight: 600; }

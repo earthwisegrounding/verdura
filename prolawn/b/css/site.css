@@ -549,3 +549,9 @@ body.menu #burger span:last-child { transform: translateY(-3.5px) rotate(-45deg)
   .js .hl::after { clip-path: none; }
   html { scroll-behavior: auto; }
 }
+
+/* Quote form: spam trap + sent state */
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.quote .btn:disabled { opacity: .7; cursor: progress; }
+.form-done { text-align: center; padding: 48px 8px; outline: none; }
+.form-done a { color: var(--wine); font-weight: 700; }
