@@ -245,6 +245,7 @@ photo.controls.enableDamping = true;
 photo.controls.enabled = false;
 
 let active = design;
+const TOUCH = matchMedia('(pointer: coarse)').matches; // phones & tablets: tap/drag/pinch wording
 
 /* ================= DOM refs ================= */
 const $ = id => document.getElementById(id);
@@ -695,12 +696,18 @@ function setTool(t) {
 function updateHint() {
   if (active === photo && !photo.ready) { setHint('Upload a photo to start — or switch to Design mode'); return; }
   switch (tool.kind) {
-    case 'select': setHint('Click an item to select · drag to move · R rotate · D duplicate · Del delete · drag empty space to orbit'); break;
-    case 'place': setHint(`Click to place ${assetDef(tool.asset).name} · Esc to finish · right-drag to orbit`); break;
-    case 'draw': setHint(`Click points to draw ${curveDef(tool.asset).name.replace(' (draw)', '')} · double-click or Enter to finish · Esc to cancel`); break;
-    case 'sculpt-up': setHint('Drag to raise the ground · right-drag to orbit'); break;
-    case 'sculpt-down': setHint('Drag to lower the ground · right-drag to orbit'); break;
-    case 'paint': setHint(`Painting ${PAINTS[tool.idx].name} · drag on the ground · right-drag to orbit`); break;
+    case 'select': setHint(TOUCH
+      ? 'Tap an item to select · drag it to move · drag empty ground to turn · two fingers to move/zoom'
+      : 'Click an item to select · drag to move · R rotate · D duplicate · Del delete · drag empty space to orbit'); break;
+    case 'place': setHint(TOUCH
+      ? `Tap to place ${assetDef(tool.asset).name} · drag to turn the view · two fingers to move/zoom`
+      : `Click to place ${assetDef(tool.asset).name} · Esc to finish · right-drag to orbit`); break;
+    case 'draw': setHint(TOUCH
+      ? `Tap points to draw ${curveDef(tool.asset).name.replace(' (draw)', '')} · ✓ Done to finish · drag to turn the view`
+      : `Click points to draw ${curveDef(tool.asset).name.replace(' (draw)', '')} · double-click or Enter to finish · Esc to cancel`); break;
+    case 'sculpt-up': setHint(`Drag to raise the ground · ${TOUCH ? 'two fingers to move/zoom' : 'right-drag to orbit'}`); break;
+    case 'sculpt-down': setHint(`Drag to lower the ground · ${TOUCH ? 'two fingers to move/zoom' : 'right-drag to orbit'}`); break;
+    case 'paint': setHint(`Painting ${PAINTS[tool.idx].name} · drag on the ground · ${TOUCH ? 'two fingers to move/zoom' : 'right-drag to orbit'}`); break;
     case 'clone': setHint('Erase: Alt-click (or first click) sets the source patch, then drag over what you want to remove'); break;
   }
 }
@@ -799,17 +806,56 @@ function placeItem(hit) {
   makeGhost();
 }
 
+/* Touch: a tap places/draws; a one-finger drag orbits instead; a second finger
+   at any point hands the gesture to the camera (pan/zoom), cancelling whatever
+   the first finger started. For touch we only switch off one-finger rotate
+   (never the whole control), so OrbitControls keeps tracking every finger. */
+const touchIds = new Set();
+let pendingTap = null;
+let touchActionAt = 0;
+const TAP_SLOP = 10, TAP_MS = 600;
+const PINCH_GRACE_MS = 350; // fingers of a pinch rarely land together
+
+function holdCamera(e) {
+  if (e.pointerType === 'touch') active.controls.enableRotate = false;
+  else active.controls.enabled = false;
+}
+
 viewport.addEventListener('pointerdown', e => {
   if (e.target !== canvas || e.button !== 0) return;
+  if (e.pointerType === 'touch') {
+    touchIds.add(e.pointerId);
+    if (touchIds.size > 1) { // second finger: camera gesture wins
+      pendingTap = null;
+      // the first finger of a pinch may already have dabbed paint or nudged
+      // an item — take that back rather than leave a blob behind
+      if (performance.now() - touchActionAt < PINCH_GRACE_MS && (stroking || (dragging && dragging.moved))) {
+        stroking = false;
+        dragging = null;
+        undo();
+      }
+      endPointerAction();
+      return;
+    }
+    if (tool.kind === 'place' || tool.kind === 'draw') {
+      pendingTap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() };
+      return;
+    }
+    touchActionAt = performance.now();
+  }
+  beginPointerAction(e);
+}, true);
+
+function beginPointerAction(e) {
   if (active === photo && !photo.ready && tool.kind !== 'select') return;
   setRay(e);
   if (tool.kind === 'place') {
     const hit = groundHit();
-    if (hit) { active.controls.enabled = false; placeItem(hit); }
+    if (hit) { holdCamera(e); placeItem(hit); }
   } else if (tool.kind === 'draw') {
     const hit = groundHit();
     if (hit) {
-      active.controls.enabled = false;
+      holdCamera(e);
       draw.pts.push(hit.point.clone());
       rebuildDrawPreview();
       updateDrawActions();
@@ -817,7 +863,7 @@ viewport.addEventListener('pointerdown', e => {
   } else if (tool.kind === 'select') {
     const it = pickItem();
     if (it) {
-      active.controls.enabled = false;
+      holdCamera(e);
       select(active, it.id);
       dragging = { id: it.id, moved: false };
       pendingUndo = currentStateStr();
@@ -827,12 +873,12 @@ viewport.addEventListener('pointerdown', e => {
   } else if (tool.kind === 'sculpt-up' || tool.kind === 'sculpt-down' || tool.kind === 'paint') {
     if (active !== design) return;
     const hit = groundHit();
-    if (hit) { active.controls.enabled = false; pushUndo(); stroking = true; applyStroke(hit); }
+    if (hit) { holdCamera(e); pushUndo(); stroking = true; applyStroke(hit); }
   } else if (tool.kind === 'clone') {
     if (active !== photo || !photo.ready) return;
     const hit = cloneHit();
     if (!hit || !hit.uv) return;
-    active.controls.enabled = false;
+    holdCamera(e);
     if (e.altKey || !cloneSrc) {
       cloneSrc = hit.uv.clone();
       ensureSrcMarker().position.copy(hit.point);
@@ -844,7 +890,7 @@ viewport.addEventListener('pointerdown', e => {
       cloneDabAt(hit.uv);
     }
   }
-}, true);
+}
 
 function cloneDabAt(uv) {
   const src = new THREE.Vector2(
@@ -856,13 +902,16 @@ function cloneDabAt(uv) {
 
 let moveQueued = false;
 window.addEventListener('pointermove', e => {
+  if (pendingTap && e.pointerId === pendingTap.id &&
+      Math.hypot(e.clientX - pendingTap.x, e.clientY - pendingTap.y) > TAP_SLOP) pendingTap = null; // it's an orbit drag
+  if (e.pointerType === 'touch' && touchIds.size > 1) return;
   if (moveQueued) return;
   moveQueued = true;
   requestAnimationFrame(() => {
     moveQueued = false;
     if (e.target !== canvas && !dragging && !stroking && !cloning && tool.kind !== 'place') return;
     setRay(e);
-    if (tool.kind === 'place' && ghost) {
+    if (tool.kind === 'place' && ghost && e.pointerType !== 'touch') {
       const hit = groundHit();
       if (hit) {
         ghost.visible = true;
@@ -899,7 +948,24 @@ window.addEventListener('pointermove', e => {
   });
 });
 
-window.addEventListener('pointerup', () => {
+function onPointerEnd(e) {
+  if (e.pointerType === 'touch') {
+    touchIds.delete(e.pointerId);
+    if (pendingTap && pendingTap.id === e.pointerId) {
+      const tap = pendingTap;
+      pendingTap = null;
+      if (e.type === 'pointerup' && performance.now() - tap.t < TAP_MS) {
+        beginPointerAction(e);
+        if (tool.kind === 'place' && ghost) ghost.visible = false; // no finger hovering on a phone
+      }
+    }
+  }
+  endPointerAction();
+}
+window.addEventListener('pointerup', onPointerEnd);
+window.addEventListener('pointercancel', onPointerEnd);
+
+function endPointerAction() {
   if (dragging && dragging.moved) {
     const it = itemFor(active, dragging.id);
     if (it && it.pts && active === design) respawnItem(active, it);
@@ -918,7 +984,8 @@ window.addEventListener('pointerup', () => {
   cloning = null;
   pendingUndo = null;
   active.controls.enabled = true;
-});
+  active.controls.enableRotate = true;
+}
 
 function rebuildPositions(world) {
   for (const it of world.items) {
@@ -1333,6 +1400,7 @@ resize();
 (async () => {
   let readyHint = hasLocal()
     ? 'Saved design found — press Load to restore it, or start fresh'
+    : TOUCH ? 'Tap ☰ to pick an element, then tap the ground to place it'
     : 'Pick an element on the left and click the ground to place it';
   if (location.hash.startsWith('#design=')) {
     try {
