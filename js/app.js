@@ -48,6 +48,7 @@ if (QUOTE) {
   bar.id = 'quote-bar';
   bar.innerHTML = '<button id="quote-send">✉️ Send my design for a free quote</button>';
   document.getElementById('viewport').appendChild(bar);
+  import('./tour.js').then(m => m.initTour({ business: QUOTE.business }));
 
   const biz = esc(QUOTE.business || 'us');
   const modal = document.createElement('div');
@@ -1421,6 +1422,8 @@ resize();
     clearTimeout(revealTimer);
     roots.forEach(r => { r.visible = true; });
     setHint(readyHint);
+    window.__verduraReady = true;
+    dispatchEvent(new Event('verdura:ready'));
   };
   roots.forEach(r => { r.visible = false; });
   setHint('Loading 3D models…');
