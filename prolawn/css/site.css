@@ -250,7 +250,7 @@ h2 em { font-style: italic; color: var(--clay-deep); }
   border: 1px solid rgba(255,255,255,.14); border-radius: 18px;
 }
 .studio-shot {
-  position: relative; border-radius: 14px; overflow: hidden;
+  display: block; position: relative; border-radius: 14px; overflow: hidden;
   box-shadow: 0 40px 90px rgba(0,0,0,.5);
   border: 1px solid rgba(255,255,255,.12);
   transform: rotate(1.2deg);
@@ -473,4 +473,5 @@ h2 em { font-style: italic; color: var(--clay-deep); }
 /* About photo's offset frame poked 2px past the phone gutter */
 @media (max-width: 760px) {
   .about-img::after { inset: 16px -14px -16px 16px; }
+  .studio-frame::before { inset: 16px -14px -16px 16px; }
 }
