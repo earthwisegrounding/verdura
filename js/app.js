@@ -1138,7 +1138,7 @@ function starterScene() {
   put('boulder', -4.6, 8.6, 0.7, 0.8);
   put('ranch', 2, -12);
   const drive = {
-    id: nextId++, type: 'driveway-a', seed: newSeed(),
+    id: nextId++, type: 'driveway', seed: newSeed(),
     x: 12.6, y: 0, z: -5.6, rot: 0, scale: 1,
     pts: [[-6.2, 0, -5.6], [-3.6, 0, -5.1], [1.2, 0, -2.6], [4.0, 0, 1.7], [5.0, 0, 6.2]],
   };

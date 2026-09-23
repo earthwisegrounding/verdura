@@ -861,9 +861,8 @@ export const CURVES = [
   { id: 'fencedraw',  name: 'Fence (draw)',              icon: '🚧', kind: 'fence',  width: 0.12, height: 1.0,  colors: { body: '#e8e4da' } },
   { id: 'concwall',   name: 'Concrete wall (draw)',      icon: '⬜', kind: 'sweep',  width: 0.28, height: 0.9,  colors: { body: '#b6b1a7' } },
   { id: 'walkway',    name: 'Concrete walkway (draw)',   icon: '🚶', kind: 'sweep',  width: 1.2,  height: 0.07, tex: 'concrete', colors: { body: '#c0bbb0' } },
-  { id: 'driveway',   name: 'Driveway — concrete (draw)',icon: '🛣️', kind: 'sweep',  width: 3.2,  height: 0.09, tex: 'concrete', colors: { body: '#b3aea4' } },
-  { id: 'driveway-a', name: 'Driveway — asphalt (draw)', icon: '🛣️', kind: 'sweep',  width: 3.2,  height: 0.09, tex: 'asphalt', texDesat: false, colors: { body: '#c8c8c8' } },
-  { id: 'drycreek',   name: 'Dry creek bed (draw)',      icon: '🏞️', kind: 'sweep',  width: 1.1,  height: 0.1,  tex: 'rockmulch', texDesat: false, colors: { body: '#cfcac2' } },
+  { id: 'driveway',   name: 'Driveway (draw)',           icon: '🛣️', kind: 'sweep',  width: 3.2,  height: 0.09, tex: 'concrete', colors: { body: '#b3aea4' } },
+  { id: 'drycreek',   name: 'Dry creek bed (draw)',      icon: '🏞️', kind: 'creek',  width: 1.2,  height: 0.07, tex: 'rockmulch', texDesat: false, colors: { body: '#b6b0a5' } },
 ];
 
 export function curveDef(id) { return CURVES.find(c => c.id === id); }
@@ -987,6 +986,59 @@ export function buildCurve(id, pts, seed, colors) {
         const t = (k + 0.5) / nPickets;
         const px = p0.x + seg.x * t, pz = p0.z + seg.z * t, py = p0.y + seg.y * t;
         addPart(new THREE.BoxGeometry(0.11, 0.95, 0.04), px, py + 0.5, pz, yaw + Math.PI / 2);
+      }
+    }
+    return g;
+  }
+  if (def.kind === 'creek') {
+    // pebble ribbon with rock-lined banks
+    const m = dsMat(new THREE.Color(bodyC).getHex(), { r: 1 });
+    m.map = detailTexture(def.tex, { desat: false });
+    m.flatShading = false;
+    const me = new THREE.Mesh(sweepGeo(pts, def.width, def.height), m);
+    me.receiveShadow = true;
+    me.userData.tint = 'body';
+    g.add(me);
+    const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)));
+    const n = Math.min(240, Math.max(4, Math.round(curve.getLength() / 0.6)));
+    const P = curve.getSpacedPoints(n);
+    const grays = [0x7d766c, 0x8a8276, 0x6e6960, 0x94897a];
+    const rockGeo = (s) => {
+      const geo = new THREE.IcosahedronGeometry(s, 1);
+      const pos = geo.attributes.position;
+      for (let i = 0; i < pos.count; i++)
+        pos.setXYZ(i, pos.getX(i) * (0.86 + R() * 0.26), pos.getY(i) * (0.52 + R() * 0.22), pos.getZ(i) * (0.86 + R() * 0.26));
+      geo.computeVertexNormals();
+      return geo;
+    };
+    for (let i = 0; i <= n; i++) {
+      const p = P[i];
+      const t = (i < n ? P[i + 1].clone().sub(p) : p.clone().sub(P[i - 1]));
+      t.y = 0;
+      if (t.lengthSq() < 1e-8) t.set(1, 0, 0); else t.normalize();
+      const nx = -t.z, nz = t.x;
+      for (const side of [-1, 1]) {
+        if (R() < 0.45) continue; // gaps keep the banks natural
+        const s = 0.1 + R() * 0.11;
+        const rock = new THREE.Mesh(
+          rockGeo(s),
+          mat(grays[Math.floor(R() * grays.length)], { flat: true, r: 1 }));
+        const off = def.width / 2 + s * 0.4 + R() * 0.08;
+        rock.position.set(p.x + nx * off * side, p.y + s * 0.2, p.z + nz * off * side);
+        rock.rotation.y = R() * Math.PI * 2;
+        rock.castShadow = rock.receiveShadow = true;
+        g.add(rock);
+      }
+      // occasional larger accent boulder in the channel
+      if (i % 7 === 3 && R() < 0.6) {
+        const s = 0.15 + R() * 0.11;
+        const rock = new THREE.Mesh(
+          rockGeo(s),
+          mat(grays[Math.floor(R() * grays.length)], { flat: true, r: 1 }));
+        rock.position.set(p.x + (R() - 0.5) * def.width * 0.5, p.y + s * 0.25, p.z + (R() - 0.5) * def.width * 0.5);
+        rock.rotation.y = R() * Math.PI * 2;
+        rock.castShadow = rock.receiveShadow = true;
+        g.add(rock);
       }
     }
     return g;

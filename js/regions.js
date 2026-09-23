@@ -43,7 +43,7 @@ export const REGIONS = {
       farmhouse: 'Craftsman home',
       colonial: 'Two-story home',
     },
-    curves: ['rockwall', 'stonewall', 'fencedraw', 'walkway', 'driveway', 'driveway-a', 'drycreek'],
+    curves: ['rockwall', 'stonewall', 'fencedraw', 'walkway', 'driveway', 'drycreek'],
     paints: [
       { name: 'Turf grass',    c: '#5d9e4c', tex: 'grass' },
       { name: 'Soil',          c: '#7a5230' },

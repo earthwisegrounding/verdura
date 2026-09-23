@@ -46,4 +46,4 @@ export const PAINT_RATES = {
 export const EXCLUDED_CATS = new Set([
   'Homes — single story', 'Homes — two story', 'Outbuildings', 'Commercial',
 ]);
-export const EXCLUDED_TYPES = new Set(['driveway', 'driveway-a']);
+export const EXCLUDED_TYPES = new Set(['driveway']);
