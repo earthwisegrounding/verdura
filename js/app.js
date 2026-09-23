@@ -1326,22 +1326,54 @@ starterScene();
 updateEstimate();
 resize();
 
-// swap in the photoscanned models as they arrive
-preloadModels(() => {
-  rebuildItems(design);
-  rebuildItems(photo);
-  makeGhost();
-});
-setHint(hasLocal()
-  ? 'Saved design found — press Load to restore it, or start fresh'
-  : 'Pick an element on the left and click the ground to place it');
+// Boot: restore a shared design if the link carries one (#design=<code>), then
+// hold the scene's objects back until their photoscanned models are in, so the
+// simple procedural stand-ins don't flash first. A slow connection gets the
+// stand-ins after 8s, upgraded as each model lands.
+(async () => {
+  let readyHint = hasLocal()
+    ? 'Saved design found — press Load to restore it, or start fresh'
+    : 'Pick an element on the left and click the ground to place it';
+  if (location.hash.startsWith('#design=')) {
+    try {
+      await restoreState(await decodeDesign(location.hash.slice(8)));
+      updateEstimate();
+      readyHint = 'Viewing a shared design ✓';
+    } catch (err) {
+      console.error(err);
+      readyHint = 'That design link looks incomplete — try copying the whole link';
+    }
+  }
 
-// A design shared by link (e.g. from a quote email): #design=<code>
-if (location.hash.startsWith('#design=')) {
-  decodeDesign(location.hash.slice(8))
-    .then(async st => { await restoreState(st); updateEstimate(); setHint('Viewing a shared design ✓'); })
-    .catch(err => { console.error(err); setHint('That design link looks incomplete — try copying the whole link'); });
-}
+  const roots = [design.itemsRoot, photo.itemsRoot];
+  let revealed = false;
+  const reveal = () => {
+    if (revealed) return;
+    revealed = true;
+    clearTimeout(revealTimer);
+    roots.forEach(r => { r.visible = true; });
+    setHint(readyHint);
+  };
+  roots.forEach(r => { r.visible = false; });
+  setHint('Loading 3D models…');
+  const revealTimer = setTimeout(reveal, 8000);
+
+  const inScene = [...new Set([...design.items, ...photo.items].map(i => i.type))];
+  preloadModels(
+    id => {
+      if (!revealed) return; // the first batch is rebuilt in one go below
+      for (const w of [design, photo]) if (w.items.some(i => i.type === id)) rebuildItems(w);
+      makeGhost();
+    },
+    inScene,
+    () => {
+      rebuildItems(design);
+      rebuildItems(photo);
+      makeGhost();
+      reveal();
+    },
+  );
+})();
 
 renderer.setAnimationLoop(() => {
   active.controls.update();

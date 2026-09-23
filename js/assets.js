@@ -95,10 +95,13 @@ export function hasModel(id) { return !!modelCache[id]; }
 
 // Loads the GLB set; calls onOne(id) as each finishes. Any failure (offline,
 // artifact sandbox, missing file) simply leaves the procedural builder active.
-export async function preloadModels(onOne) {
+// Loads the photoscanned models for the assets this edition offers (ASSETS is
+// curated per region). `first` ids load before the rest; onFirst fires once
+// they're all in, onOne after every individual model.
+export async function preloadModels(onOne, first = [], onFirst) {
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
-  await Promise.all(Object.entries(MODELS).map(async ([id, def]) => {
+  const load = async (id, def) => {
     try {
       const embedded = typeof window !== 'undefined' && window.__VERDURA_MODELS;
       const gltf = await loader.loadAsync((embedded && embedded[id]) || def.url);
@@ -143,7 +146,12 @@ export async function preloadModels(onOne) {
     } catch (e) {
       console.warn('model unavailable, keeping procedural ' + id, e.message || e);
     }
-  }));
+  };
+  const ids = Object.keys(MODELS).filter(id => ASSETS.some(a => a.id === id));
+  const firstIds = ids.filter(id => first.includes(id));
+  await Promise.all(firstIds.map(id => load(id, MODELS[id])));
+  if (onFirst) onFirst();
+  await Promise.all(ids.filter(id => !firstIds.includes(id)).map(id => load(id, MODELS[id])));
 }
 
 function makeRng(seed) {
