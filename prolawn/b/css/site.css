@@ -26,7 +26,7 @@ body {
   color: var(--ink); background: var(--cream);
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
 }
-img { display: block; max-width: 100%; }
+img { display: block; max-width: 100%; height: auto; }
 a { color: inherit; }
 button, input, textarea { font: inherit; color: inherit; }
 ul, ol { list-style: none; }

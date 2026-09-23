@@ -23,7 +23,7 @@ body {
   background: var(--paper);
   -webkit-font-smoothing: antialiased;
 }
-img { display: block; max-width: 100%; }
+img { display: block; max-width: 100%; height: auto; }
 a { color: inherit; }
 .wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 
@@ -293,9 +293,10 @@ h2 em { font-style: italic; color: var(--clay-deep); }
 #lightbox {
   position: fixed; inset: 0; z-index: 200; background: rgba(10, 16, 12, .96);
   display: flex; align-items: center; justify-content: center;
-  opacity: 0; pointer-events: none; transition: opacity .3s ease;
+  opacity: 0; pointer-events: none; visibility: hidden;
+  transition: opacity .3s ease, visibility 0s linear .3s;
 }
-#lightbox.open { opacity: 1; pointer-events: auto; }
+#lightbox.open { opacity: 1; pointer-events: auto; visibility: visible; transition: opacity .3s ease; }
 #lightbox img {
   max-width: min(92vw, 1400px); max-height: 86vh; border-radius: 8px;
   box-shadow: 0 30px 80px rgba(0,0,0,.6);
@@ -467,4 +468,9 @@ h2 em { font-style: italic; color: var(--clay-deep); }
 /* Hero: phones and tablets get the 1300px photo instead of the full-size one */
 @media (max-width: 1000px) {
   .hero-bg { background-image: url("../assets/gallery/mid/2.jpg"); }
+}
+
+/* About photo's offset frame poked 2px past the phone gutter */
+@media (max-width: 760px) {
+  .about-img::after { inset: 16px -14px -16px 16px; }
 }
