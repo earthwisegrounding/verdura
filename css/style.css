@@ -196,6 +196,44 @@ body.quote-mode #est-panel, body.quote-mode #btn-est { display: none !important;
   #quote-bar { right: 8px; bottom: 42px; }
   #quote-bar button { padding: 10px 16px; font-size: 12px; }
 }
+#quote-modal {
+  position: fixed; inset: 0; z-index: 100; display: grid; place-items: center;
+  padding: 16px; background: rgba(0,0,0,.6); backdrop-filter: blur(3px);
+}
+#quote-modal[hidden] { display: none; }
+.qm-card {
+  position: relative; width: min(460px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto;
+  background: var(--panel); color: var(--text); border: 1px solid var(--line);
+  border-radius: 16px; padding: 26px 24px 22px; box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+.qm-card h2 { font-size: 19px; margin: 0 28px 6px 0; }
+.qm-sub { color: var(--dim); margin: 0 0 18px; font-size: 13.5px; }
+.qm-card label { display: block; margin-bottom: 12px; }
+.qm-card label span { display: block; font-size: 12px; font-weight: 600; color: var(--dim); margin-bottom: 5px; }
+.qm-card input, .qm-card textarea {
+  width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; color: var(--text);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px;
+}
+.qm-card input:focus, .qm-card textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.qm-card textarea { resize: vertical; }
+.qm-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 480px) { .qm-row { grid-template-columns: 1fr; gap: 0; } }
+.qm-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.qm-err { color: #ff9b8f; font-weight: 600; margin: 0; min-height: 0; }
+.qm-err:not(:empty) { margin-bottom: 12px; }
+.qm-go {
+  width: 100%; border: 0; cursor: pointer; font: inherit; font-weight: 700; font-size: 14px;
+  padding: 13px 18px; border-radius: 999px; color: #0c1a10; background: var(--accent);
+}
+.qm-go:disabled { opacity: .7; cursor: progress; }
+.qm-x {
+  position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 14px;
+}
+.qm-done { text-align: center; padding: 18px 4px 4px; outline: none; }
+.qm-done h2 { margin: 0 0 10px; }
+.qm-done p { color: var(--dim); margin: 0 0 20px; font-size: 14px; }
+.qm-done a { color: var(--accent); font-weight: 700; }
 
 /* ---- custom estimate lines ---- */
 #est-add { margin-top: 8px; width: 100%; padding: 6px; border-radius: 7px; border: 1px dashed var(--line); background: transparent; color: var(--dim); cursor: pointer; font-size: 12px; }

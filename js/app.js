@@ -48,17 +48,128 @@ if (QUOTE) {
   bar.id = 'quote-bar';
   bar.innerHTML = '<button id="quote-send">✉️ Send my design for a free quote</button>';
   document.getElementById('viewport').appendChild(bar);
-  document.getElementById('quote-send').addEventListener('click', () => {
-    downloadText('my-landscape-design.json', JSON.stringify(fullState()));
-    setHint('Design file downloaded — attach it to the email that opens ✓');
-    const subject = encodeURIComponent('Quote request — my 3D landscape design');
-    const body = encodeURIComponent(
-      'Hi ' + (QUOTE.business || '') + ',\n\n' +
-      'I designed my yard in your online Design Studio and would like a free quote.\n' +
-      'My design file (my-landscape-design.json) just downloaded to my computer — I have attached it to this email.\n\n' +
-      'Name:\nPhone:\nProperty address:\n\nThank you!');
-    setTimeout(() => { window.location.href = 'mailto:' + QUOTE.email + '?subject=' + subject + '&body=' + body; }, 600);
+
+  const biz = esc(QUOTE.business || 'us');
+  const modal = document.createElement('div');
+  modal.id = 'quote-modal';
+  modal.hidden = true;
+  modal.innerHTML = `
+    <div class="qm-card" role="dialog" aria-modal="true" aria-labelledby="qm-title">
+      <button type="button" class="qm-x" aria-label="Close">✕</button>
+      <form novalidate>
+        <h2 id="qm-title">Send your design for a free quote</h2>
+        <p class="qm-sub">${biz} will see your yard in 3D and get back to you.</p>
+        <label><span>Name</span><input name="name" autocomplete="name" required></label>
+        <div class="qm-row">
+          <label><span>Phone</span><input name="phone" type="tel" autocomplete="tel"></label>
+          <label><span>Email</span><input name="email" type="email" autocomplete="email"></label>
+        </div>
+        <label><span>Property address</span><input name="address" autocomplete="street-address"></label>
+        <label><span>Anything else we should know?</span><textarea name="notes" rows="3" placeholder="Budget, timing, what matters most…"></textarea></label>
+        <input class="qm-hp" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <p class="qm-err" role="alert"></p>
+        <button type="submit" class="qm-go">Send my design</button>
+      </form>
+    </div>`;
+  document.body.appendChild(modal);
+  const qForm = modal.querySelector('form');
+  const qErr = modal.querySelector('.qm-err');
+  let lastFocus = null;
+  const openModal = () => {
+    lastFocus = document.activeElement;
+    modal.hidden = false;
+    qForm.elements.name.focus();
+  };
+  const closeModal = () => {
+    modal.hidden = true;
+    if (lastFocus) lastFocus.focus();
+  };
+  document.getElementById('quote-send').addEventListener('click', openModal);
+  modal.querySelector('.qm-x').addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+  modal.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeModal(); return; }
+    if (e.key !== 'Tab') return;
+    const f = [...modal.querySelectorAll('button, input:not(.qm-hp), textarea, a[href]')];
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault(); }
+    else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault(); }
   });
+
+  qForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const v = k => qForm.elements[k].value.trim();
+    const name = v('name'), phone = v('phone'), email = v('email');
+    if (!name) { qErr.textContent = 'Please add your name.'; qForm.elements.name.focus(); return; }
+    if (!phone && !email) { qErr.textContent = 'Please add a phone number or email so we can reach you.'; qForm.elements.phone.focus(); return; }
+    qErr.textContent = '';
+    const go = qForm.querySelector('.qm-go');
+    go.disabled = true;
+    go.textContent = 'Sending…';
+
+    const code = await encodeDesign(fullState());
+    const link = location.origin + location.pathname + '#design=' + code;
+    const summary = designSummary();
+    const subject = 'Design quote request — ' + name;
+    const payload = {
+      name, phone, email, address: v('address'), notes: v('notes'),
+      whats_in_the_design: summary,
+      view_design_in_3d: link,
+      _subject: subject, _gotcha: qForm.elements._gotcha.value,
+    };
+    if (email) payload._replyto = email;
+    try {
+      if (!QUOTE.formspree) throw new Error('no form endpoint');
+      const res = await fetch(QUOTE.formspree, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('Formspree ' + res.status);
+      modal.querySelector('.qm-card').innerHTML = `
+        <div class="qm-done" role="status" tabindex="-1">
+          <h2>Thanks, ${esc(name.split(' ')[0])}!</h2>
+          <p>Your design is on its way to ${biz}. We'll be in touch soon${QUOTE.phone ? ` — need us sooner? Call <a href="tel:${QUOTE.phone.replace(/\D/g, '')}">${esc(QUOTE.phone)}</a>` : ''}.</p>
+          <button type="button" class="qm-go">Back to my design</button>
+        </div>`;
+      modal.querySelector('.qm-done .qm-go').addEventListener('click', closeModal);
+      modal.querySelector('.qm-done').focus();
+      setHint('Design sent ✓');
+    } catch (err) {
+      console.error(err);
+      go.disabled = false;
+      go.textContent = 'Send my design';
+      qErr.textContent = 'We couldn\'t send that just now — opening your email app instead.';
+      const body =
+        'Hi ' + (QUOTE.business || '') + ',\n\nI designed my yard in your online Design Studio and would like a free quote.\n\n' +
+        'Name: ' + name + '\nPhone: ' + phone + '\nEmail: ' + email + '\nProperty address: ' + v('address') +
+        (v('notes') ? '\n\n' + v('notes') : '') +
+        '\n\nWhat\'s in my design:\n' + summary +
+        '\n\nView my design in 3D:\n' + link + '\n';
+      setTimeout(() => {
+        location.href = 'mailto:' + QUOTE.email + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+      }, 900);
+    }
+  });
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* ---- design <-> shareable link code (deflate + base64url) ---- */
+async function encodeDesign(state) {
+  const stream = new Blob([JSON.stringify(state)]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function decodeDesign(code) {
+  const bin = atob(code.replace(/-/g, '+').replace(/_/g, '/'));
+  const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return JSON.parse(await new Response(stream).text());
 }
 
 /* ================= renderer ================= */
@@ -284,6 +395,26 @@ function estimateData() {
     rows.push({ kind: 'custom', cl });
   }
   return { rows, total, excluded };
+}
+
+// Plain-language list of what's in the design (no prices) — for quote emails.
+function designSummary() {
+  const counts = new Map();
+  const lines = [];
+  for (const it of design.items) {
+    const def = assetDefAny(it.type);
+    const nm = def ? def.name.replace(' (draw)', '') : it.type;
+    if (it.pts) lines.push(`${nm} — ${Math.round(curveLenFt(design, it))} linear ft`);
+    else counts.set(nm, (counts.get(nm) || 0) + 1);
+  }
+  const out = [...counts].map(([nm, n]) => `${n} × ${nm}`).concat(lines);
+  const cellSqFt = Math.pow(40 / 96, 2) * 10.7639;
+  PAINTS.forEach((paint, idx) => {
+    let n = 0;
+    for (const v of design.terrain.paint) if (v === idx) n++;
+    if (n && idx > 0) out.push(`${paint.name} — about ${Math.round(n * cellSqFt).toLocaleString()} sq ft`);
+  });
+  return out.length ? out.map(l => '• ' + l).join('\n') : '(empty design)';
 }
 
 function updateEstimate() {
@@ -918,7 +1049,8 @@ $('sel-del').addEventListener('click', () => {
 
 /* ================= keyboard ================= */
 window.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+  if ((e.target.tagName === 'INPUT' && e.target.type !== 'range') || e.target.tagName === 'TEXTAREA') return;
+  if (e.target.closest && e.target.closest('#quote-modal')) return;
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
   switch (e.key) {
     case 'Escape':
@@ -1203,6 +1335,13 @@ preloadModels(() => {
 setHint(hasLocal()
   ? 'Saved design found — press Load to restore it, or start fresh'
   : 'Pick an element on the left and click the ground to place it');
+
+// A design shared by link (e.g. from a quote email): #design=<code>
+if (location.hash.startsWith('#design=')) {
+  decodeDesign(location.hash.slice(8))
+    .then(async st => { await restoreState(st); updateEstimate(); setHint('Viewing a shared design ✓'); })
+    .catch(err => { console.error(err); setHint('That design link looks incomplete — try copying the whole link'); });
+}
 
 renderer.setAnimationLoop(() => {
   active.controls.update();
