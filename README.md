@@ -76,7 +76,7 @@ bush, boulder) and CC-BY from Sketchfab — thanks to: Helindu (Japanese
 maple), vasil--0 (arborvitae), lolipop_1707 (birch), whitewashstudio
 (azalea bush used for hedge & rhododendron), strielecki (craftsman house),
 mbuannoart (two-story house), volvor (red barn), Poligonik (garden shed),
-shooter24994 (bench), abby (fire pit). deltahedra (pergola). The garden fountain is CC0 by Isa Lousberg (via
+shooter24994 (bench), abby (fire pit). deltahedra (pergola), PlantCatalog (Colorado blue spruce, beaked yucca), Jagobo (quaking aspens). The garden fountain is CC0 by Isa Lousberg (via
 Poly Pizza). The hydrangea is a Quixel Megascans asset and the
 Japanese-style home a user-supplied model (both provided by the project
 owner under their own licences). Ground, paving, siding, and roof detail textures are

@@ -1,4 +1,5 @@
-const KEY = 'verdura-save-v1';
+const REGION = (typeof window !== 'undefined' && window.__VERDURA_REGION) || 'pnw';
+const KEY = 'verdura-save-v1' + (REGION === 'pnw' ? '' : '-' + REGION);
 
 export function saveLocal(obj) {
   try { localStorage.setItem(KEY, JSON.stringify(obj)); return true; }

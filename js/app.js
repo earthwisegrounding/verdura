@@ -5,6 +5,31 @@ import { Terrain, PAINTS } from './terrain.js?v=2';
 import * as Photo from './photo.js?v=2';
 import { saveLocal, loadLocal, hasLocal, downloadText, downloadDataUrl } from './storage.js?v=2';
 import { UNIT_COSTS, CURVE_RATES, PAINT_RATES, EXCLUDED_CATS, EXCLUDED_TYPES } from './costs.js';
+import { activeRegion } from './regions.js';
+
+/* ================= region edition ================= */
+const REGION = activeRegion();
+{
+  // curate the catalog for this region (in place, before anything builds)
+  const inc = REGION.include ? new Set(REGION.include) : null;
+  const keptAssets = ASSETS.filter(d => (inc ? inc.has(d.id) : !d.only || d.only === REGION.id));
+  ASSETS.length = 0; ASSETS.push(...keptAssets);
+  for (const d of ASSETS) {
+    if (REGION.renames[d.id]) d.name = REGION.renames[d.id];
+    if (REGION.icons && REGION.icons[d.id]) d.icon = REGION.icons[d.id];
+  }
+  if (REGION.curves) {
+    const cinc = new Set(REGION.curves);
+    const keptCurves = CURVES.filter(d => cinc.has(d.id));
+    CURVES.length = 0; CURVES.push(...keptCurves);
+  }
+  if (REGION.paints) { PAINTS.length = 0; PAINTS.push(...REGION.paints); }
+  Object.assign(UNIT_COSTS, REGION.prices);
+  Object.assign(PAINT_RATES, REGION.paintRates);
+  document.title = REGION.title;
+  const brandEl = document.querySelector('#brand .brandname');
+  if (brandEl) brandEl.textContent = REGION.brand;
+}
 
 /* ================= renderer ================= */
 const canvas = document.getElementById('c');
@@ -1074,6 +1099,31 @@ function starterScene() {
     design.items.push(item);
     spawnObject(design, item);
   };
+  if (REGION.starter === 'co') {
+    put('farmhouse', 0, -11);
+    put('bluespruce', -13, -6);
+    put('aspen', 10, -4);
+    put('aspen', 12.5, -5.5);
+    put('aspen', 11.5, -2.5);
+    put('oak', -8, 2);
+    put('yucca', -4, 4);
+    put('yucca', -2.5, 5.2);
+    put('shrub', -6, 5);
+    put('boulder', -0.5, 6);
+    put('firepit', 4, 5);
+    put('bench', 6.5, 4.2, -0.9);
+    const drive = {
+      id: nextId++, type: 'driveway', seed: newSeed(),
+      x: 11, y: 0, z: 2, rot: 0, scale: 1,
+      pts: [[-5.5, 0, -8], [-3.5, 0, -5], [-1, 0, 0], [0.5, 0, 4], [1, 0, 9]],
+    };
+    design.items.push(drive);
+    spawnObject(design, drive);
+    // rock-mulch the planting bed
+    design.terrain.setPaint(-4, 4.6, 3.4, 3);
+    design.terrain.setPaint(-0.5, 6, 2, 3);
+    return;
+  }
   put('oak', -6, -6);
   put('pine', 7, -8);
   put('maple', 8, 3, 2.1);
