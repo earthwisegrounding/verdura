@@ -8,9 +8,15 @@ onScroll();
 
 // Mobile nav
 const toggle = document.getElementById('menu-toggle');
-toggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
-document.querySelectorAll('#site-nav a').forEach(a =>
-  a.addEventListener('click', () => document.body.classList.remove('nav-open')));
+const setNav = open => {
+  document.body.classList.toggle('nav-open', open);
+  toggle.setAttribute('aria-expanded', String(open));
+};
+toggle.addEventListener('click', () => setNav(!document.body.classList.contains('nav-open')));
+document.querySelectorAll('#site-nav a').forEach(a => a.addEventListener('click', () => setNav(false)));
+addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.body.classList.contains('nav-open')) { setNav(false); toggle.focus(); }
+});
 
 // Reveal on scroll
 const io = new IntersectionObserver(entries => {
@@ -24,6 +30,7 @@ const lbImg = lb.querySelector('img');
 const lbCap = lb.querySelector('.lb-cap');
 const figures = [...document.querySelectorAll('#gallery figure')];
 let lbIndex = 0;
+let lbReturn = null;
 
 function openLb(i) {
   lbIndex = (i + figures.length) % figures.length;
@@ -32,16 +39,26 @@ function openLb(i) {
   lbImg.alt = img.alt;
   lbCap.textContent = figures[lbIndex].querySelector('figcaption').textContent +
     '  ·  ' + (lbIndex + 1) + ' / ' + figures.length;
-  lb.classList.add('open');
-  lb.setAttribute('aria-hidden', 'false');
-  document.body.style.overflow = 'hidden';
+  if (!lb.classList.contains('open')) {
+    lbReturn = document.activeElement;
+    lb.classList.add('open');
+    lb.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    lb.querySelector('.lb-close').focus();
+  }
 }
 function closeLb() {
   lb.classList.remove('open');
   lb.setAttribute('aria-hidden', 'true');
   document.body.style.overflow = '';
+  if (lbReturn) lbReturn.focus();
 }
-figures.forEach((f, i) => f.addEventListener('click', () => openLb(i)));
+figures.forEach((f, i) => {
+  f.addEventListener('click', () => openLb(i));
+  f.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLb(i); }
+  });
+});
 lb.querySelector('.lb-close').addEventListener('click', closeLb);
 lb.querySelector('.lb-prev').addEventListener('click', e => { e.stopPropagation(); openLb(lbIndex - 1); });
 lb.querySelector('.lb-next').addEventListener('click', e => { e.stopPropagation(); openLb(lbIndex + 1); });
@@ -51,6 +68,12 @@ addEventListener('keydown', e => {
   if (e.key === 'Escape') closeLb();
   if (e.key === 'ArrowLeft') openLb(lbIndex - 1);
   if (e.key === 'ArrowRight') openLb(lbIndex + 1);
+  if (e.key === 'Tab') { // keep focus on the viewer's buttons while it's open
+    const btns = [...lb.querySelectorAll('button')];
+    const i = btns.indexOf(document.activeElement);
+    e.preventDefault();
+    btns[(i + (e.shiftKey ? -1 : 1) + btns.length) % btns.length].focus();
+  }
 });
 
 // Quote form → Formspree (falls back to the email app if it can't be reached)
