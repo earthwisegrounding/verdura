@@ -437,8 +437,11 @@ h2 em { font-style: italic; color: var(--clay-deep); }
   .form-row { grid-template-columns: 1fr; gap: 0; }
   .quote-form { padding: 30px 22px; }
   .svc { grid-template-columns: 48px 1fr; }
-  .masonry { columns: 2 160px; column-gap: 10px; }
-  .masonry figure { margin-bottom: 10px; }
+  /* phones: even 2-up grid of square thumbnails (masonry columns balanced
+     badly here and fell to one very long column on narrow screens) */
+  .masonry { columns: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .masonry figure { margin: 0; }
+  .masonry img { aspect-ratio: 1; object-fit: cover; }
   .lb-prev { left: 8px; } .lb-next { right: 8px; }
 }
 
