@@ -22,8 +22,8 @@ export const REGIONS = {
     include: [
       // trees
       'bluespruce', 'aspen', 'pine', 'dougfir', 'oak', 'jacaranda', 'cypress',
-      // shrubs & xeric plants
-      'shrub', 'hedge', 'yucca',
+      // shrubs, perennials & xeric plants
+      'shrub', 'hedge', 'yucca', 'juniper', 'lupine', 'columbine', 'lavender',
       // hardscape
       'boulder', 'patio', 'path', 'stepstones',
       // structures
@@ -36,13 +36,14 @@ export const REGIONS = {
       oak: 'Gambel oak',
       jacaranda: 'Plains cottonwood',
       cypress: 'Arborvitae',
+      juniper: 'Rocky Mountain juniper',
       shrub: 'Big sagebrush',
       hedge: 'Boxwood hedge',
       path: 'Flagstone path',
       farmhouse: 'Craftsman home',
       colonial: 'Two-story home',
     },
-    curves: ['rockwall', 'stonewall', 'fencedraw', 'walkway', 'driveway', 'driveway-a'],
+    curves: ['rockwall', 'stonewall', 'fencedraw', 'walkway', 'driveway', 'driveway-a', 'drycreek'],
     paints: [
       { name: 'Turf grass',    c: '#5d9e4c', tex: 'grass' },
       { name: 'Soil',          c: '#7a5230' },
@@ -54,7 +55,7 @@ export const REGIONS = {
     prices: {
       bluespruce: 450, aspen: 300, pine: 300, dougfir: 300, oak: 350,
       jacaranda: 300, cypress: 180,
-      shrub: 60, hedge: 90, yucca: 75,
+      shrub: 60, hedge: 90, yucca: 75, juniper: 250, lupine: 45, columbine: 40, lavender: 40,
       boulder: 400, patio: 1600, path: 450, stepstones: 160,
       bench: 400, firepit: 950, pergola: 4200,
     },

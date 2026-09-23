@@ -23,6 +23,10 @@ export const MODELS = {
   bluespruce:{ url: 'assets/models/tree_bluespruce.glb', height: 7.5,  fp: 2.2 },
   aspen:     { url: 'assets/models/tree_aspen.glb',      height: 8.0,  fp: 2.4 },
   yucca:     { url: 'assets/models/yucca.glb',           height: 1.3,  fp: 0.9 },
+  juniper:   { url: 'assets/models/tree_juniper.glb',    height: 4.5,  fp: 1.8 },
+  lupine:    { url: 'assets/models/lupine.glb',          height: 0.75, fp: 0.5 },
+  columbine: { url: 'assets/models/columbine.glb',       height: 0.6,  fp: 0.4 },
+  lavender:  { url: 'assets/models/lavender_bush.glb',   height: 0.5,  fp: 0.5 },
   fountain:  { url: 'assets/models/fountain.glb',        width: 2.2,   fp: 1.2 },
   hydrangea: { url: 'assets/models/hydrangea.glb',       height: 1.0,  fp: 0.8 },
   jhouse:    { url: 'assets/models/house_japanese.glb',  height: 6.5,  fp: 5.5 },
@@ -560,6 +564,7 @@ export const ASSETS = [
   { id: 'jacaranda', name: 'Bigleaf maple',   icon: '🍁', cat: 'Trees',            fp: 3.4, build: oak },
   { id: 'bluespruce',name: 'Colorado blue spruce', icon: '🌲', cat: 'Trees',       fp: 2.2, build: pine, only: 'co' },
   { id: 'aspen',     name: 'Quaking aspen',   icon: '🌳', cat: 'Trees',            fp: 2.4, build: birch, only: 'co' },
+  { id: 'juniper',   name: 'Juniper',         icon: '🌲', cat: 'Trees',            fp: 1.8, build: cypress, only: 'co' },
   { id: 'shrub',     name: 'Evergreen huckleberry', icon: '🫐', cat: 'Shrubs & flowers', fp: 0.7, build: shrub },
   { id: 'hedge',     name: 'Hedge',           icon: '🟩', cat: 'Shrubs & flowers', fp: 0.8, build: hedge },
   { id: 'flowers',   name: 'Flower bed',      icon: '🌸', cat: 'Shrubs & flowers', fp: 1.1, build: flowers },
@@ -569,6 +574,8 @@ export const ASSETS = [
   { id: 'rhodie',    name: 'Rhododendron',    icon: '🌺', cat: 'Shrubs & flowers', fp: 0.8, build: rhodie },
   { id: 'hydrangea', name: 'Hydrangea',       icon: '🌼', cat: 'Shrubs & flowers', fp: 0.8, build: rhodie },
   { id: 'yucca',     name: 'Yucca',           icon: '🌵', cat: 'Shrubs & flowers', fp: 0.9, build: fern, only: 'co' },
+  { id: 'lupine',    name: 'Lupine',          icon: '🪻', cat: 'Shrubs & flowers', fp: 0.5, build: lavender, only: 'co' },
+  { id: 'columbine', name: 'Columbine',       icon: '🌸', cat: 'Shrubs & flowers', fp: 0.4, build: flowers, only: 'co' },
   { id: 'fern',      name: 'Sword fern',      icon: '🌿', cat: 'Shrubs & flowers', fp: 0.7, build: fern },
   { id: 'flowersrect', name: 'Flower bed (rect)', icon: '🌷', cat: 'Shrubs & flowers', fp: 1.3, build: flowersRect },
   { id: 'boulder',   name: 'Boulder',         icon: '🪨', cat: 'Hardscape',        fp: 0.9, build: boulder },
@@ -856,6 +863,7 @@ export const CURVES = [
   { id: 'walkway',    name: 'Concrete walkway (draw)',   icon: '🚶', kind: 'sweep',  width: 1.2,  height: 0.07, tex: 'concrete', colors: { body: '#c0bbb0' } },
   { id: 'driveway',   name: 'Driveway — concrete (draw)',icon: '🛣️', kind: 'sweep',  width: 3.2,  height: 0.09, tex: 'concrete', colors: { body: '#b3aea4' } },
   { id: 'driveway-a', name: 'Driveway — asphalt (draw)', icon: '🛣️', kind: 'sweep',  width: 3.2,  height: 0.09, tex: 'asphalt', texDesat: false, colors: { body: '#c8c8c8' } },
+  { id: 'drycreek',   name: 'Dry creek bed (draw)',      icon: '🏞️', kind: 'sweep',  width: 1.1,  height: 0.1,  tex: 'rockmulch', texDesat: false, colors: { body: '#cfcac2' } },
 ];
 
 export function curveDef(id) { return CURVES.find(c => c.id === id); }

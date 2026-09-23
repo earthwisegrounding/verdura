@@ -179,6 +179,7 @@ body[data-mode="design"] #photo-panel { display: none !important; }
 #est-panel.collapsed .chev { transform: rotate(-90deg); }
 #est-panel.collapsed #est-rows,
 #est-panel.collapsed .row,
+#est-panel.collapsed #est-add,
 #est-panel.collapsed #est-note { display: none; }
 #est-panel.collapsed { max-height: none; }
 

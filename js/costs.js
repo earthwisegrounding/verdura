@@ -26,6 +26,7 @@ export const CURVE_RATES = {
 
   concwall: 70,   // short poured/block concrete wall
   walkway: 40,    // ~4 ft wide concrete walk (~$10/sq ft)
+  drycreek: 22,   // river-rock dry creek bed w/ fabric + edging
 };
 
 // $ per square foot for painted ground materials that get estimated.
