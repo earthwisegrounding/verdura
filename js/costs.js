@@ -22,6 +22,7 @@ export const UNIT_COSTS = {
 export const CURVE_RATES = {
   rockwall: 60,   // low dry-stack stone garden wall
   stonewall: 65,  // mortared/stacked stone garden wall
+  trench: 10,     // ~12in wide x 18in deep, dug + backfilled (irrigation/drain)
   blockrow: 12,   // per ft of each block row (stacked stone border, installed)
   blockwall: 85,  // ~2 ft segmental block retaining wall (split-face units, gravel base, cap)
   fencedraw: 30,  // wood picket fence installed

@@ -327,6 +327,17 @@ let priceOverrides = {};
 let qtyOverrides = {};
 let customLines = []; // landscaper-entered services: {id, label, amount}
 
+// Trench items are cut into the design terrain (restored when deleted).
+function syncCuts() {
+  const cuts = design.items.filter(it => it.pts && curveDef(it.type) && curveDef(it.type).kind === 'trench').map(it => {
+    const def = curveDef(it.type);
+    const local = resolveCurvePts(design, it).map(p => new THREE.Vector3(p[0], 0, p[2]));
+    const pts = local.length > 1 ? new THREE.CatmullRomCurve3(local).getSpacedPoints(Math.max(4, local.length * 12)) : local;
+    return { pts: pts.map(p => [+(p.x + it.x).toFixed(3), +(p.z + it.z).toFixed(3)]), width: def.width * it.scale, depth: def.height };
+  });
+  design.terrain.setCuts(cuts);
+}
+
 function curveLenFt(world, it) {
   const pts = resolveCurvePts(world, it).map(pt => new THREE.Vector3(...pt));
   return new THREE.CatmullRomCurve3(pts).getLength() * 3.28084;
@@ -424,6 +435,7 @@ function designSummary() {
 }
 
 function updateEstimate() {
+  syncCuts();
   const rowsEl = $('est-rows');
   if (!rowsEl) return;
   const { rows, total, excluded } = estimateData();

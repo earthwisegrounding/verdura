@@ -893,6 +893,7 @@ export const CURVES = [
   { id: 'rockwall',   name: 'Rock wall (draw)',          icon: '🪨', kind: 'stones', width: 0.5,  height: 0.55, colors: { body: '#8f8f88' } },
   { id: 'stonewall',  name: 'Stone wall (draw)',         icon: '🧱', kind: 'stackwall', width: 0.3, height: 0.66, colors: { body: '#9a8f7f' } },
   { id: 'fencedraw',  name: 'Fence (draw)',              icon: '🚧', kind: 'fence',  width: 0.12, height: 1.0,  colors: { body: '#e8e4da' } },
+  { id: 'trench',     name: 'Trench (draw)',             icon: '⛏️', kind: 'trench', width: 0.3, height: 0.45, colors: { body: '#6b4a2e' } },
   { id: 'blockrow',   name: 'Stacked block border (draw)', icon: '🧱', kind: 'blocks', width: 0.11, height: 0.08, colors: { body: '#ffffff' } },
   { id: 'blockwall',  name: 'Block retaining wall (draw)', icon: '🔳', kind: 'srw', width: 0.32, height: 0.68, tex: 'splitface', colors: { body: '#bab5ad' } },
   { id: 'concwall',   name: 'Concrete wall (draw)',      icon: '⬜', kind: 'sweep',  width: 0.28, height: 0.9,  colors: { body: '#b6b1a7' } },
@@ -955,6 +956,14 @@ export function buildCurve(id, pts, seed, colors, opts = {}) {
   const g = new THREE.Group();
   g.userData.assetId = id;
   const bodyC = (colors && colors.body) || def.colors.body;
+  if (def.kind === 'trench') {
+    // the cut itself lives in the terrain (Terrain.setCuts); this is just an
+    // invisible ribbon along the path so the trench can be clicked/selected
+    const me = new THREE.Mesh(sweepGeo(pts, def.width, 0.02),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+    g.add(me);
+    return g;
+  }
   if (def.kind === 'blocks') {
     // Scanned 7x4x3" stone blocks: a full-length base row, plus optional 2nd and
     // 3rd rows that start partway along (opts.row2 / opts.row3, meters from the
