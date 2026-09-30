@@ -281,7 +281,7 @@ function updateSun() {
 function spawnObject(world, item) {
   let obj;
   if (item.pts) {
-    obj = buildCurve(item.type, resolveCurvePts(world, item), item.seed, item.colors);
+    obj = buildCurve(item.type, resolveCurvePts(world, item), item.seed, item.colors, item);
     obj.position.set(item.x, 0, item.z);
   } else {
     obj = buildAsset(item.type, item.seed);
@@ -339,7 +339,11 @@ function estimateCost(world, it) {
     if (EXCLUDED_TYPES.has(it.type)) return null;
     if (it.cost != null) return it.cost;
     const rate = CURVE_RATES[it.type];
-    return rate == null ? null : Math.round(curveLenFt(world, it) * rate);
+    if (rate == null) return null;
+    const ft = curveLenFt(world, it);
+    // stacked block borders are priced per foot of each row
+    const rows = [it.row2, it.row3].filter(v => v != null).reduce((sum, m) => sum + Math.max(0, ft - m * 3.28084), ft);
+    return Math.round((curveDef(it.type).kind === 'blocks' ? rows : ft) * rate);
   }
   const def = assetDef(it.type);
   if (!def || EXCLUDED_CATS.has(def.cat)) return null;
@@ -570,7 +574,34 @@ function select(world, id) {
     selRot.value = ((it.rot * 180 / Math.PI) % 360 + 360) % 360;
     selScale.value = it.scale;
     updateColorRows(it, def);
+    updateTierRows(world, it, def);
   }
+}
+
+// 2nd/3rd row start sliders for stacked block borders (value at max = no row)
+function updateTierRows(world, it, def) {
+  const box = document.getElementById('row-tiers');
+  if (!box) return;
+  const show = !!(it.pts && def.kind === 'blocks');
+  box.classList.toggle('hidden', !show);
+  if (!show) return;
+  const maxFt = Math.max(1, Math.floor(curveLenFt(world, it)));
+  for (const k of ['row2', 'row3']) {
+    const inp = document.getElementById('tier-' + k);
+    inp.max = maxFt;
+    inp.value = it[k] == null ? maxFt : Math.min(maxFt, Math.round(it[k] * 3.28084 * 2) / 2);
+    document.getElementById('tier-' + k + '-v').textContent = it[k] == null ? 'none' : inp.value + ' ft';
+  }
+}
+for (const k of ['row2', 'row3']) {
+  const inp = document.getElementById('tier-' + k);
+  if (!inp) continue;
+  inp.addEventListener('input', () => selEdit(it => {
+    const v = +inp.value;
+    it[k] = v >= +inp.max ? null : v / 3.28084;
+    document.getElementById('tier-' + k + '-v').textContent = it[k] == null ? 'none' : v + ' ft';
+  }));
+  inp.addEventListener('change', () => { sliderArmed = true; });
 }
 
 function respawnItem(world, it) {

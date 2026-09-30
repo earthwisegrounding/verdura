@@ -59,6 +59,10 @@
       <h3 id="sel-name">Selected</h3>
       <label class="slider">Rotate<input id="sel-rot" type="range" min="0" max="360" step="1" value="0"></label>
       <label class="slider">Scale<input id="sel-scale" type="range" min="0.3" max="3" step="0.05" value="1"></label>
+      <div id="row-tiers" class="hidden">
+        <label class="slider">2nd row from<input id="tier-row2" type="range" min="0" max="10" step="0.5" value="10"><span id="tier-row2-v" class="tierv">none</span></label>
+        <label class="slider">3rd row from<input id="tier-row3" type="range" min="0" max="10" step="0.5" value="10"><span id="tier-row3-v" class="tierv">none</span></label>
+      </div>
       <label class="colorrow hidden" id="row-body">Body color<input type="color" id="col-body" value="#d9d2c3"></label>
       <label class="colorrow hidden" id="row-roof">Roof / accent<input type="color" id="col-roof" value="#6b6560"></label>
       <button id="col-reset" class="hidden">Reset colors</button>

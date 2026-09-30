@@ -9,6 +9,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 // Real-model overrides: id -> file + target height (models are normalized to
 // this height with their base at y=0 when loaded).
 export const MODELS = {
+  blockrow:  { url: 'assets/models/wall_block.glb',      width: 0.1778 },
   oak:       { url: 'assets/models/tree_deciduous.glb',  height: 5.5,  fp: 2.4 },
   jacaranda: { url: 'assets/models/tree_jacaranda.glb',  height: 8.0,  fp: 3.4 },
   pine:      { url: 'assets/models/tree_pine.glb',       height: 8.0,  fp: 1.9 },
@@ -172,7 +173,7 @@ export async function preloadModels(onOne, first = [], onFirst) {
       console.warn('model unavailable, keeping procedural ' + id, e.message || e);
     }
   };
-  const ids = Object.keys(MODELS).filter(id => ASSETS.some(a => a.id === id));
+  const ids = Object.keys(MODELS).filter(id => ASSETS.some(a => a.id === id) || CURVES.some(c => c.id === id));
   const firstIds = ids.filter(id => first.includes(id));
   await Promise.all(firstIds.map(id => load(id, MODELS[id])));
   if (onFirst) onFirst();
@@ -892,6 +893,7 @@ export const CURVES = [
   { id: 'rockwall',   name: 'Rock wall (draw)',          icon: '🪨', kind: 'stones', width: 0.5,  height: 0.55, colors: { body: '#8f8f88' } },
   { id: 'stonewall',  name: 'Stone wall (draw)',         icon: '🧱', kind: 'stackwall', width: 0.3, height: 0.66, colors: { body: '#9a8f7f' } },
   { id: 'fencedraw',  name: 'Fence (draw)',              icon: '🚧', kind: 'fence',  width: 0.12, height: 1.0,  colors: { body: '#e8e4da' } },
+  { id: 'blockrow',   name: 'Stacked block border (draw)', icon: '🧱', kind: 'blocks', width: 0.11, height: 0.08, colors: { body: '#ffffff' } },
   { id: 'blockwall',  name: 'Block retaining wall (draw)', icon: '🔳', kind: 'srw', width: 0.32, height: 0.68, tex: 'splitface', colors: { body: '#bab5ad' } },
   { id: 'concwall',   name: 'Concrete wall (draw)',      icon: '⬜', kind: 'sweep',  width: 0.28, height: 0.9,  colors: { body: '#b6b1a7' } },
   { id: 'walkway',    name: 'Concrete walkway (draw)',   icon: '🚶', kind: 'sweep',  width: 1.2,  height: 0.07, tex: 'concrete', colors: { body: '#c0bbb0' } },
@@ -947,12 +949,73 @@ function sweepGeo(pts, width, height) {
   return g;
 }
 
-export function buildCurve(id, pts, seed, colors) {
+export function buildCurve(id, pts, seed, colors, opts = {}) {
   const def = curveDef(id);
   const R = makeRng(seed);
   const g = new THREE.Group();
   g.userData.assetId = id;
   const bodyC = (colors && colors.body) || def.colors.body;
+  if (def.kind === 'blocks') {
+    // Scanned 7x4x3" stone blocks: a full-length base row, plus optional 2nd and
+    // 3rd rows that start partway along (opts.row2 / opts.row3, meters from the
+    // start) for a stepped flower-bed side.
+    const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)));
+    const L = curve.getLength();
+    if (L < 0.1) return g;
+    const BL = 0.1778, BH = 0.0801, J = 0.004;
+    let geo, material;
+    const src = modelCache[id];
+    if (src) {
+      src.updateMatrixWorld(true);
+      src.traverse(m => {
+        if (!m.isMesh || geo) return;
+        // meshopt-quantized attributes are int16/normalized; bake to float first
+        geo = new THREE.BufferGeometry();
+        for (const [name, at] of Object.entries(m.geometry.attributes)) {
+          const f = new Float32Array(at.count * at.itemSize);
+          for (let i = 0; i < at.count; i++) for (let k = 0; k < at.itemSize; k++) f[i * at.itemSize + k] = at.getComponent(i, k);
+          geo.setAttribute(name, new THREE.BufferAttribute(f, at.itemSize));
+        }
+        if (m.geometry.index) geo.setIndex(m.geometry.index.clone());
+        geo.applyMatrix4(m.matrixWorld);
+        // the scan exports as fully metallic, which renders black without an env map
+        material = m.material.clone();
+        material.metalness = 0;
+        material.roughness = 0.95;
+      });
+    }
+    if (!geo) {
+      geo = new THREE.BoxGeometry(BL, BH, 0.11).translate(0, BH / 2, 0);
+      material = mat(0x9a948a, { r: 0.95 });
+    }
+    const starts = [0, opts.row2, opts.row3].filter(v => v != null && v < L - BL * 0.5);
+    const mats = [];
+    starts.forEach((s0, c) => {
+      // running bond on one grid for the whole wall: odd rows sit half a block over
+      const pitch = BL + J, shift = c % 2 ? pitch / 2 : 0;
+      const first = shift + Math.ceil((s0 - shift - 1e-6) / pitch) * pitch;
+      for (let s = first; s < L - 0.02; s += pitch) {
+        const len = Math.min(BL, L - s);
+        if (len < BL * 0.45) break;
+        const mid = s + len / 2;
+        const u = Math.min(1, mid / L);
+        const p = curve.getPointAt(u), t = curve.getTangentAt(u);
+        const yaw = Math.atan2(-t.z, t.x) + (R() < 0.5 ? Math.PI : 0) + (R() - 0.5) * 0.04;
+        const m4 = new THREE.Matrix4().compose(
+          new THREE.Vector3(p.x, p.y - 0.01 + c * BH, p.z),
+          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw),
+          new THREE.Vector3(len / BL, 1, 1));
+        mats.push(m4);
+      }
+    });
+    if (!mats.length) return g;
+    const inst = new THREE.InstancedMesh(geo, material, mats.length);
+    mats.forEach((m4, i) => inst.setMatrixAt(i, m4));
+    inst.castShadow = inst.receiveShadow = true;
+    inst.userData.tint = 'body';
+    g.add(inst);
+    return g;
+  }
   if (def.kind === 'srw') {
     // Segmental retaining wall: split-face concrete units in running bond,
     // each course set back ~3/4" like the real interlocking blocks, capped.
