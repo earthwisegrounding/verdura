@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Real-model overrides: id -> file + target height (models are normalized to
 // this height with their base at y=0 when loaded).
@@ -82,12 +83,36 @@ export function detailTexture(name, { desat = false, repeatX = 1, repeatY = 1, c
       ctx.putImageData(d, 0, 0);
       source = c;
     }
+    // drop the placeholder's GPU texture: its storage was sized 1x1, and the
+    // renderer won't re-allocate it just because the image grew
+    tex.dispose();
     tex.image = source;
     tex.needsUpdate = true;
   };
   const emb = typeof window !== 'undefined' && window.__VERDURA_TEXTURES;
   img.src = (emb && emb[name]) || 'assets/textures/' + name + '.jpg';
   texCache[key] = tex;
+  return tex;
+}
+
+// Tangent-space normal map (flat until the image arrives). No tangents needed:
+// three.js perturbs normals from screen-space derivatives.
+const norCache = {};
+export function normalTexture(name) {
+  if (norCache[name]) return norCache[name];
+  const c = document.createElement('canvas');
+  c.width = c.height = 1;
+  c.getContext('2d').fillStyle = 'rgb(128,128,255)';
+  c.getContext('2d').fillRect(0, 0, 1, 1);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.NoColorSpace;
+  tex.anisotropy = 4;
+  const img = new Image();
+  img.onload = () => { tex.dispose(); tex.image = img; tex.needsUpdate = true; };
+  const emb = typeof window !== 'undefined' && window.__VERDURA_TEXTURES;
+  img.src = (emb && emb[name]) || 'assets/textures/' + name + '.jpg';
+  norCache[name] = tex;
   return tex;
 }
 
@@ -867,6 +892,7 @@ export const CURVES = [
   { id: 'rockwall',   name: 'Rock wall (draw)',          icon: '🪨', kind: 'stones', width: 0.5,  height: 0.55, colors: { body: '#8f8f88' } },
   { id: 'stonewall',  name: 'Stone wall (draw)',         icon: '🧱', kind: 'stackwall', width: 0.3, height: 0.66, colors: { body: '#9a8f7f' } },
   { id: 'fencedraw',  name: 'Fence (draw)',              icon: '🚧', kind: 'fence',  width: 0.12, height: 1.0,  colors: { body: '#e8e4da' } },
+  { id: 'blockwall',  name: 'Block retaining wall (draw)', icon: '🔳', kind: 'srw', width: 0.32, height: 0.68, tex: 'splitface', colors: { body: '#bab5ad' } },
   { id: 'concwall',   name: 'Concrete wall (draw)',      icon: '⬜', kind: 'sweep',  width: 0.28, height: 0.9,  colors: { body: '#b6b1a7' } },
   { id: 'walkway',    name: 'Concrete walkway (draw)',   icon: '🚶', kind: 'sweep',  width: 1.2,  height: 0.07, tex: 'concrete', colors: { body: '#c0bbb0' } },
   { id: 'driveway',   name: 'Driveway (draw)',           icon: '🛣️', kind: 'sweep',  width: 3.2,  height: 0.09, tex: 'concrete', colors: { body: '#b3aea4' } },
@@ -927,6 +953,95 @@ export function buildCurve(id, pts, seed, colors) {
   const g = new THREE.Group();
   g.userData.assetId = id;
   const bodyC = (colors && colors.body) || def.colors.body;
+  if (def.kind === 'srw') {
+    // Segmental retaining wall: split-face concrete units in running bond,
+    // each course set back ~3/4" like the real interlocking blocks, capped.
+    const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)));
+    const L = curve.getLength();
+    if (L < 0.1) return g;
+    const UNIT = 0.46, COURSE = 0.152, DEPTH = 0.28, JOINT = 0.006, SETBACK = 0.019, COURSES = 4;
+    const CAP_H = 0.075, CAP_D = 0.31, BURY = 0.06, TEX = 2.6;
+    // Northwest blend: charcoal, cool gray, warm tan, brown-gray, the odd mossy unit
+    const BLEND = [[0.66, 0.66, 0.68], [0.95, 0.95, 0.95], [1.08, 1.0, 0.88], [0.86, 0.81, 0.76], [0.78, 0.78, 0.8]];
+    const pickTone = () => {
+      if (R() < 0.03) return [0.84, 0.88, 0.8];
+      const t = BLEND[Math.floor(R() * BLEND.length)];
+      const k = 0.94 + R() * 0.12;
+      return t.map(v => v * k);
+    };
+    const parts = [];
+    const tmpN = new THREE.Vector3();
+    const addUnit = (s0, s1, yLift, depth, h, back, tone, lip, bev) => {
+      const len = s1 - s0 - JOINT;
+      if (len < 0.06) return;
+      const sm = (s0 + s1) / 2;
+      const u = Math.min(1, sm / L);
+      const p = curve.getPointAt(u);
+      const t = curve.getTangentAt(u);
+      const yaw = Math.atan2(t.x, t.z);
+      const nx = -t.z, nz = t.x; // wall face points to the tangent's left
+      const gz = Math.hypot(t.x, t.z) || 1;
+      const d = depth + (R() - 0.5) * 0.012, hh = h + (R() - 0.5) * 0.006;
+      // chamfered unit: an inset rectangle extruded with a 1-step bevel keeps
+      // the outer size exact while the edges catch light like tumbled block
+      const sh = new THREE.Shape();
+      sh.moveTo(-len / 2 + bev, -hh / 2 + bev); sh.lineTo(len / 2 - bev, -hh / 2 + bev);
+      sh.lineTo(len / 2 - bev, hh / 2 - bev); sh.lineTo(-len / 2 + bev, hh / 2 - bev);
+      const geo = new THREE.ExtrudeGeometry(sh, { depth: d - 2 * bev, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 1, curveSegments: 1 });
+      geo.translate(0, 0, -(d - 2 * bev) / 2);
+      // box-projected UVs in meters, random offset per unit so no two faces match
+      const pos = geo.attributes.position, nor = geo.attributes.normal, uv = geo.attributes.uv;
+      const ou = R() * 7, ov = R() * 7;
+      for (let i = 0; i < pos.count; i++) {
+        tmpN.fromBufferAttribute(nor, i);
+        const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+        const ax = Math.abs(tmpN.x), ay = Math.abs(tmpN.y), az = Math.abs(tmpN.z);
+        const [a, b] = az >= ax && az >= ay ? [x, y] : ay >= ax ? [x, z] : [z, y];
+        uv.setXY(i, ou + a * TEX, ov + b * TEX);
+      }
+      const col = new Float32Array(pos.count * 3);
+      for (let i = 0; i < pos.count; i++) col.set(tone, i * 3);
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      const off = -back + lip;
+      const m = new THREE.Matrix4().makeRotationY(yaw - Math.PI / 2 + (R() - 0.5) * 0.01);
+      m.setPosition(p.x + (nx / gz) * off, p.y + yLift + h / 2, p.z + (nz / gz) * off);
+      geo.applyMatrix4(m);
+      parts.push(geo);
+    };
+    const run = (course, unit) => {
+      const n = Math.max(1, Math.round(L / unit));
+      const seg = L / n;
+      const shift = course % 2 ? seg / 2 : 0;
+      const edges = [0];
+      for (let b = shift || seg; b < L - 0.03; b += seg) edges.push(b);
+      edges.push(L);
+      return edges;
+    };
+    for (let c = 0; c < COURSES; c++) {
+      const e = run(c, UNIT);
+      for (let i = 0; i < e.length - 1; i++) {
+        addUnit(e[i], e[i + 1], -BURY + c * COURSE, DEPTH, COURSE - JOINT, c * SETBACK, pickTone(), 0, 0.009);
+      }
+    }
+    const capE = run(1, 0.61);
+    for (let i = 0; i < capE.length - 1; i++) {
+      const tone = pickTone().map(v => v * 1.04);
+      addUnit(capE[i], capE[i + 1], -BURY + COURSES * COURSE, CAP_D, CAP_H, COURSES * SETBACK, tone, 0.018, 0.006);
+    }
+    if (!parts.length) return g;
+    const merged = mergeGeometries(parts);
+    parts.forEach(q => q.dispose());
+    const m = mat(new THREE.Color(bodyC).getHex(), { r: 0.95 });
+    m.vertexColors = true;
+    m.map = detailTexture(def.tex, { desat: true, contrast: 1 });
+    m.normalMap = normalTexture(def.tex + '_nor');
+    m.normalScale = new THREE.Vector2(1.4, 1.4);
+    const mesh = new THREE.Mesh(merged, m);
+    mesh.castShadow = mesh.receiveShadow = true;
+    mesh.userData.tint = 'body';
+    g.add(mesh);
+    return g;
+  }
   if (def.kind === 'stackwall') {
     const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)));
     const len = curve.getLength();

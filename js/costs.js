@@ -22,6 +22,7 @@ export const UNIT_COSTS = {
 export const CURVE_RATES = {
   rockwall: 60,   // low dry-stack stone garden wall
   stonewall: 65,  // mortared/stacked stone garden wall
+  blockwall: 85,  // ~2 ft segmental block retaining wall (split-face units, gravel base, cap)
   fencedraw: 30,  // wood picket fence installed
 
   concwall: 70,   // short poured/block concrete wall

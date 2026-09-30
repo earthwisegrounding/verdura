@@ -80,7 +80,8 @@ shooter24994 (bench), abby (fire pit). deltahedra (pergola), PlantCatalog (Color
 Poly Pizza). The hydrangea is a Quixel Megascans asset and the
 Japanese-style home a user-supplied model (both provided by the project
 owner under their own licences). Ground, paving, siding, and roof detail textures are
-CC0 from Poly Haven. All processed and optimized for this app; remaining
+CC0 from Poly Haven; the block retaining wall's split-face surface is Poly Haven's
+rock_face_03 (CC0), regraded for tinting. All processed and optimized for this app; remaining
 items are original procedural models.
 
 ## Cost estimator
