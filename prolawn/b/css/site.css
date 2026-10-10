@@ -464,6 +464,12 @@ body.menu #burger span:last-child { transform: translateY(-3.5px) rotate(-45deg)
   color: transparent; -webkit-text-stroke: 1.4px rgba(255,255,255,.2);
 }
 .ftr-bot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.1); font-size: 13px; }
+.site-credit { margin: 24px 0 0; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.1); text-align: center; font-size: 13px; line-height: 1.4; }
+.site-credit a { display: inline-flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 10px; color: #aebdb0; text-decoration: none; transition: color .2s; }
+.site-credit img { width: 53px; height: 40px; }
+.site-credit strong { font-weight: 700; color: #dfe8e0; transition: color .2s; }
+.site-credit a:hover { color: #dfe8e0; }
+.site-credit a:hover strong { color: #fff; }
 
 /* ---------- responsive ---------- */
 @media (max-width: 1080px) {
