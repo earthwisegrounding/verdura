@@ -518,7 +518,7 @@ function updateEstimate() {
   }
   rowsEl.innerHTML = html || '<div class="est-empty">Nothing estimated yet — add elements to the design.</div>';
   $('est-total').textContent = '$' + total.toLocaleString();
-  $('est-note').textContent = (excluded ? `${excluded} item${excluded > 1 ? 's' : ''} not estimated (buildings & driveways). ` : '') +
+  $('est-note').textContent = (excluded ? `${excluded} item${excluded > 1 ? 's' : ''} not estimated (buildings, driveways & waterfront). ` : '') +
     'Prices and quantities are editable.';
 }
 
