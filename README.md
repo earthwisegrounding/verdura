@@ -59,7 +59,7 @@ download that the browser caches).
 
 ## Photoscanned models
 
-The oak, pine, jacaranda, shrub, and boulder use real photoscanned models from
+The oak, pine, jacaranda, shrub, and boulders use real photoscanned models from
 [Poly Haven](https://polyhaven.com) (CC0), processed in Blender: foliage is
 reduced by pruning whole leaf clusters and enlarging the survivors (which keeps
 canopies full at ~5% of the source triangles), solids are decimated, textures
@@ -72,17 +72,33 @@ artifact build), the procedural low-poly versions are used automatically.
 
 Photoscanned/3D models are CC0 from [Poly Haven](https://polyhaven.com)
 (deciduous tree, bigleaf maple tree, shore pine, Douglas fir, huckleberry
-bush, boulder) and CC-BY from Sketchfab — thanks to: Helindu (Japanese
-maple), vasil--0 (arborvitae), lolipop_1707 (birch), whitewashstudio
-(azalea bush used for hedge & rhododendron), strielecki (craftsman house),
-mbuannoart (two-story house), volvor (red barn), Poligonik (garden shed),
-shooter24994 (bench), abby (fire pit). deltahedra (pergola), PlantCatalog (Colorado blue spruce, beaked yucca, large-leaved lupine), Jagobo (quaking aspens), Valery.Li (western juniper), olinstudio (columbine), AmerMoco (lavender). The garden fountain is CC0 by Isa Lousberg (via
-Poly Pizza). The hydrangea is a Quixel Megascans asset and the
-Japanese-style home a user-supplied model (both provided by the project
-owner under their own licences). Ground, paving, siding, and roof detail textures are
-CC0 from Poly Haven; the block retaining wall's split-face surface is Poly Haven's
-rock_face_03 (CC0), regraded for tinting. All processed and optimized for this app; remaining
-items are original procedural models.
+bush, and the three boulders from Kless Gyzen's rock_moss_set_01) and CC-BY
+from Sketchfab — thanks to: Helindu (Japanese maple), vasil--0 (arborvitae),
+lolipop_1707 (birch), whitewashstudio (azalea bush used for hedge &
+rhododendron), volvor (red barn), Poligonik (garden shed), shooter24994
+(bench), abby (fire pit), deltahedra (pergola), PlantCatalog (Colorado blue
+spruce, beaked yucca, large-leaved lupine), Jagobo (quaking aspens),
+Valery.Li (western juniper), olinstudio (columbine), AmerMoco (lavender),
+SanForge (3D Fern - 01, sword fern), RosticOstafi (rose bush), ryanbair
+(marigold plant, used in the flower beds), galaxyabundant (small lotus leaf
+cluster, pond), alexdelker (raised garden bed).
+
+Buildings, all CC-BY from Sketchfab: AleixoAlonso (House "May-Flower"
+Design 39 → ranch home, "Dawson" Design 36 → cottage, "Fleetwood" Design 50
+→ gable ranch, and "American House" → modern farmhouse and the detached
+garage), Blueberry12 (American Colonial house → two-story home), taz83
+(Modern House exterior), DanielStringer (Japanese House), Orzechu (old
+American brick building with shop → storefront), hamma085 (317 Washington
+Street → office building), prankscare99 (Industrial Warehouse).
+
+The garden fountain is CC0 by Isa Lousberg (via Poly Pizza). The hydrangea
+is a Quixel Megascans asset and the stacked stone block border a scanned
+block supplied by the project owner (both under their own licences).
+Ground, paving, siding, roof, and mulch detail textures are CC0 from Poly
+Haven (bed mulch is wood_chips); the block retaining wall's split-face
+surface is Poly Haven's rock_face_03 (CC0), regraded for tinting. All
+processed and optimized for this app; remaining items are original
+procedural models.
 
 ## Cost estimator
 

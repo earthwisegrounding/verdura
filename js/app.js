@@ -281,6 +281,8 @@ function updateSun() {
 function spawnObject(world, item) {
   let obj;
   if (item.pts) {
+    // cut first, so anything built along the path sits in the cut
+    if (world === design && curveDef(item.type) && curveDef(item.type).cut) syncCuts();
     obj = buildCurve(item.type, resolveCurvePts(world, item), item.seed, item.colors, item);
     obj.position.set(item.x, 0, item.z);
   } else {
@@ -329,11 +331,12 @@ let customLines = []; // landscaper-entered services: {id, label, amount}
 
 // Trench items are cut into the design terrain (restored when deleted).
 function syncCuts() {
-  const cuts = design.items.filter(it => it.pts && curveDef(it.type) && curveDef(it.type).kind === 'trench').map(it => {
+  const cuts = design.items.filter(it => it.pts && curveDef(it.type) && (curveDef(it.type).kind === 'trench' || curveDef(it.type).cut)).map(it => {
     const def = curveDef(it.type);
+    const c = def.cut || { width: def.width, depth: def.height };
     const local = resolveCurvePts(design, it).map(p => new THREE.Vector3(p[0], 0, p[2]));
     const pts = local.length > 1 ? new THREE.CatmullRomCurve3(local).getSpacedPoints(Math.max(4, local.length * 12)) : local;
-    return { pts: pts.map(p => [+(p.x + it.x).toFixed(3), +(p.z + it.z).toFixed(3)]), width: def.width * it.scale, depth: def.height };
+    return { pts: pts.map(p => [+(p.x + it.x).toFixed(3), +(p.z + it.z).toFixed(3)]), width: c.width * it.scale, depth: c.depth, flat: c.flat, lip: c.lip, tint: c.tint };
   });
   design.terrain.setCuts(cuts);
 }
@@ -1375,9 +1378,9 @@ function starterScene() {
   if (REGION.starter === 'co') {
     put('farmhouse', 0, -11);
     put('bluespruce', -13, -6);
-    put('aspen', 10, -4);
-    put('aspen', 12.5, -5.5);
-    put('aspen', 11.5, -2.5);
+    put('aspen', 11.5, -4);
+    put('aspen', 14, -5.5);
+    put('aspen', 13, -2.5);
     put('oak', -8, 2);
     put('yucca', -4, 4);
     put('yucca', -2.5, 5.2);
@@ -1398,7 +1401,7 @@ function starterScene() {
     return;
   }
   put('oak', -6, -6);
-  put('pine', 7, -8);
+  put('pine', -12.5, -12);
   put('maple', 8, 3, 2.1);
   put('path', 0, 4);
   put('path', 0, 1.8);
@@ -1410,10 +1413,11 @@ function starterScene() {
   put('pond', -7, 7);
   put('boulder', -4.6, 8.6, 0.7, 0.8);
   put('ranch', 2, -12);
+  put('garage', 13.5, -13);
   const drive = {
     id: nextId++, type: 'driveway', seed: newSeed(),
-    x: 12.6, y: 0, z: -5.6, rot: 0, scale: 1,
-    pts: [[-6.2, 0, -5.6], [-3.6, 0, -5.1], [1.2, 0, -2.6], [4.0, 0, 1.7], [5.0, 0, 6.2]],
+    x: 13.5, y: 0, z: 0, rot: 0, scale: 1,
+    pts: [[0, 0, -9.6], [0.2, 0, -5], [1.2, 0, 0], [2.6, 0, 5], [3.4, 0, 10]],
   };
   design.items.push(drive);
   spawnObject(design, drive);

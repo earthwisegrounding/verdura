@@ -20,7 +20,7 @@ export const MODELS = {
   shrub:     { url: 'assets/models/shrub_bush.glb',      height: 1.4,  fp: 1.0 },
   rhodie:    { url: 'assets/models/rhodie_bush.glb',     height: 1.3,  fp: 0.9 },
   hedge:     { url: 'assets/models/hedge_bush.glb',      height: 0.85, fp: 0.9 },
-  boulder:   { url: 'assets/models/boulder.glb',         height: 0.85, fp: 0.9 },
+  boulder:   { urls: ['assets/models/boulder_1.glb', 'assets/models/boulder_2.glb', 'assets/models/boulder_3.glb'], height: 0.85, fp: 0.9 },
   pergola:   { url: 'assets/models/pergola.glb',         height: 2.6,  fp: 2.2 },
   bluespruce:{ url: 'assets/models/tree_bluespruce.glb', height: 7.5,  fp: 2.2 },
   aspen:     { url: 'assets/models/tree_aspen.glb',      height: 8.0,  fp: 2.4 },
@@ -28,12 +28,26 @@ export const MODELS = {
   juniper:   { url: 'assets/models/tree_juniper.glb',    height: 4.5,  fp: 1.8 },
   lupine:    { url: 'assets/models/lupine.glb',          height: 0.75, fp: 0.5 },
   columbine: { url: 'assets/models/columbine.glb',       height: 0.6,  fp: 0.4 },
-  lavender:  { url: 'assets/models/lavender_bush.glb',   height: 0.5,  fp: 0.5 },
+  lavender:  { url: 'assets/models/lavender_bush.glb',   height: 0.5,  fp: 0.5, keepVC: true },
   fountain:  { url: 'assets/models/fountain.glb',        width: 2.2,   fp: 1.2 },
   hydrangea: { url: 'assets/models/hydrangea.glb',       height: 1.0,  fp: 0.8 },
-  jhouse:    { url: 'assets/models/house_japanese.glb',  height: 6.5,  fp: 5.5 },
-  farmhouse: { url: 'assets/models/house_craftsman.glb', height: 6.4,  fp: 7.2 },
-  colonial:  { url: 'assets/models/house_twostory.glb',  height: 6.3,  fp: 5.2 },
+  fern:      { url: 'assets/models/fern.glb',            width: 1.2,   fp: 0.7 },
+  rose:      { url: 'assets/models/rose.glb',            height: 1.1,  fp: 0.6 },
+  bed_marigold: { url: 'assets/models/bed_marigold.glb', width: 0.45, keepVC: true },
+  pond_lotus: { url: 'assets/models/pond_lotus.glb',     width: 0.8 },
+  raisedbed: { url: 'assets/models/raised_bed.glb',      width: 1.8,   fp: 1.1 },
+  // homes and buildings, at true scale (CC-BY sources credited in the README)
+  ranch:     { url: 'assets/models/house_ranch.glb',     height: 3.97, fp: 5.4 },
+  lranch:    { url: 'assets/models/house_lranch.glb',    height: 4.1,  fp: 6.3, rotY: Math.PI / 2 },
+  cottage:   { url: 'assets/models/house_cottage.glb',   height: 3.97, fp: 6.0 },
+  colonial:  { url: 'assets/models/house_colonial.glb',  width: 16,    fp: 7.5 },
+  modern2:   { url: 'assets/models/house_modern.glb',    height: 7.9,  fp: 6.5 },
+  jhouse:    { url: 'assets/models/house_japanese2.glb', width: 12,    fp: 6.0 },
+  farmhouse: { url: 'assets/models/house_farmhouse.glb', width: 19.5,  fp: 9.5 },
+  garage:    { url: 'assets/models/garage.glb',          width: 7.3,   fp: 4.2 },
+  storefront:{ url: 'assets/models/storefront.glb',      height: 8.5,  fp: 10, rotY: -Math.PI / 2, bright: 1.7 },
+  office:    { url: 'assets/models/office.glb',          height: 9.5,  fp: 16 },
+  warehouse: { url: 'assets/models/warehouse.glb',       height: 7.9,  fp: 12 },
   barn:      { url: 'assets/models/barn.glb',            height: 4.0,  fp: 5.2 },
   shed:      { url: 'assets/models/shed.glb',            height: 2.8,  fp: 2.0 },
   bench:     { url: 'assets/models/bench.glb',           height: 0.85, fp: 0.95 },
@@ -41,6 +55,7 @@ export const MODELS = {
 };
 
 const modelCache = {};
+const variantCache = {};
 
 /* ---- detail textures (Poly Haven CC0, fetched into assets/textures) ---- */
 const texCache = {};
@@ -127,12 +142,27 @@ export function hasModel(id) { return !!modelCache[id]; }
 export async function preloadModels(onOne, first = [], onFirst) {
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
+  // A def may list several urls (variants); placed items pick one by seed.
   const load = async (id, def) => {
+    const urls = def.urls || [def.url];
+    const wraps = (await Promise.all(urls.map((u, k) => loadOne(id, def, u, urls.length > 1 ? id + '#' + k : id)))).filter(Boolean);
+    if (!wraps.length) return;
+    modelCache[id] = wraps[0];
+    variantCache[id] = wraps;
+    const adef = ASSETS.find(x => x.id === id);
+    if (adef && def.fp) adef.fp = def.fp;
+    if (onOne) {
+      onOne(id);
+      for (const a of [...ASSETS, ...CURVES]) if (a.uses && a.uses.includes(id)) onOne(a.id);
+    }
+  };
+  const loadOne = async (id, def, url, key) => {
     try {
       const embedded = typeof window !== 'undefined' && window.__VERDURA_MODELS;
-      const gltf = await loader.loadAsync((embedded && embedded[id]) || def.url);
+      const gltf = await loader.loadAsync((embedded && embedded[key]) || url);
       const src = gltf.scene;
       if (def.rotX) src.rotation.x = def.rotX;
+      if (def.rotY) src.rotation.y = def.rotY;
       src.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(src);
       const s = def.width
@@ -149,13 +179,22 @@ export async function preloadModels(onOne, first = [], onFirst) {
         m.receiveShadow = true;
         // many source models carry baked-dark vertex colors that multiply
         // the texture to near-black — drop them
-        if (m.geometry && m.geometry.attributes.color) m.geometry.deleteAttribute('color');
-        if (m.material) m.material.vertexColors = false;
+        if (!def.keepVC) {
+          if (m.geometry && m.geometry.attributes.color) m.geometry.deleteAttribute('color');
+          if (m.material) m.material.vertexColors = false;
+        }
         if (m.material) {
           const mat = m.material;
           mat.side = THREE.DoubleSide;
           // foliage cards need cutout alpha; some sources forget to flag it,
           // so also match by material name
+          // source glass is matte near-black; make it glossy and reflect the sky
+          if (/glass/i.test(mat.name || '')) {
+            mat.color.set(0x4a5866);
+            mat.roughness = 0.08;
+            mat.metalness = 0.55;
+            mat.envMap = skyEnv();
+          }
           const leafy = /branch|leaf|leaves|needle|twig|atlas|fern|flower|frond|bloom/i.test(mat.name || '');
           if (mat.transparent || mat.alphaTest > 0 || leafy) {
             mat.transparent = false;
@@ -165,16 +204,22 @@ export async function preloadModels(onOne, first = [], onFirst) {
           }
         }
       });
-      modelCache[id] = wrap;
-      const adef = ASSETS.find(x => x.id === id);
-      if (adef && def.fp) adef.fp = def.fp;
-      if (onOne) onOne(id);
+      // lift sources whose baked textures read too dark under our lighting
+      if (def.bright) {
+        const mats = new Set();
+        wrap.traverse(m => { if (m.isMesh && m.material) mats.add(m.material); });
+        for (const mt of mats) mt.color.multiplyScalar(def.bright);
+      }
+      return wrap;
     } catch (e) {
       console.warn('model unavailable, keeping procedural ' + id, e.message || e);
+      return null;
     }
   };
-  const ids = Object.keys(MODELS).filter(id => ASSETS.some(a => a.id === id) || CURVES.some(c => c.id === id));
-  const firstIds = ids.filter(id => first.includes(id));
+  const used = new Set([...ASSETS, ...CURVES].flatMap(a => a.uses || []));
+  const ids = Object.keys(MODELS).filter(id => ASSETS.some(a => a.id === id) || CURVES.some(c => c.id === id) || used.has(id));
+  const firstUses = [...ASSETS, ...CURVES].filter(a => first.includes(a.id)).flatMap(a => a.uses || []);
+  const firstIds = ids.filter(id => first.includes(id) || firstUses.includes(id));
   await Promise.all(firstIds.map(id => load(id, MODELS[id])));
   if (onFirst) onFirst();
   await Promise.all(ids.filter(id => !firstIds.includes(id)).map(id => load(id, MODELS[id])));
@@ -306,7 +351,56 @@ function hedge(R) {
     [0, 0, 0], [1, 1 + R() * 0.1, 1]);
   return g;
 }
-function flowers(R) {
+// Planted mulch bed built from the scanned plant models (marigold edging,
+// lavender/columbine middle, lupine spires at the back or centre). Falls back
+// to the simple procedural bed until those models have loaded.
+const BED_USES = ['bed_marigold', 'lavender', 'columbine', 'lupine'];
+function planarUV(geo, k) {
+  const p = geo.attributes.position, uv = geo.attributes.uv;
+  for (let i = 0; i < p.count; i++) uv.setXY(i, p.getX(i) * k, p.getZ(i) * k);
+  return geo;
+}
+function plantBed(R, shape) {
+  if (!modelCache.bed_marigold) return shape === 'round' ? flowersProc(R) : flowersRectProc(R);
+  const g = new THREE.Group();
+  const mulch = mat(0xd6c6b4, { r: 1 });
+  mulch.map = detailTexture('mulch');
+  const edge = mat(0x2d2a26, { r: 0.6, m: 0.4 });
+  const TOP = 0.07;
+  if (shape === 'round') {
+    const prof = [new THREE.Vector2(1.0, 0), new THREE.Vector2(0.98, TOP - 0.01), new THREE.Vector2(0.7, TOP + 0.01), new THREE.Vector2(0, TOP + 0.025)];
+    add(g, planarUV(new THREE.LatheGeometry(prof, 40), 0.9), mulch);
+    const ring = add(g, new THREE.CylinderGeometry(1.0, 1.0, 0.07, 48, 1, true), edge, [0, 0.035, 0]);
+    ring.material = edge.clone(); ring.material.side = THREE.DoubleSide;
+  } else {
+    add(g, planarUV(new THREE.BoxGeometry(2.2, TOP, 1.1), 0.9), mulch, [0, TOP / 2, 0]);
+    for (const [w, d, x, z] of [[2.22, 0.012, 0, 0.555], [2.22, 0.012, 0, -0.555], [0.012, 1.1, 1.105, 0], [0.012, 1.1, -1.105, 0]]) {
+      add(g, new THREE.BoxGeometry(w, 0.08, d), edge, [x, 0.04, z]);
+    }
+  }
+  const put = (id, x, z, s = 1) => {
+    const src = modelCache[id];
+    if (!src) return;
+    const c = src.clone(true);
+    c.position.set(x + (R() - 0.5) * 0.06, TOP - 0.01, z + (R() - 0.5) * 0.06);
+    c.rotation.y = R() * Math.PI * 2;
+    c.scale.setScalar(s * (0.85 + R() * 0.3));
+    g.add(c);
+  };
+  if (shape === 'round') {
+    for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2 + R() * 0.2; put('bed_marigold', Math.cos(a) * 0.72, Math.sin(a) * 0.72); }
+    for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2 + 0.6; put(i % 2 ? 'columbine' : 'lavender', Math.cos(a) * 0.38, Math.sin(a) * 0.38); }
+    put('lupine', 0, 0, 1.1);
+  } else {
+    for (let i = 0; i < 5; i++) put('bed_marigold', -0.84 + i * 0.42, 0.33);
+    for (let i = 0; i < 4; i++) put(i % 2 ? 'columbine' : 'lavender', -0.72 + i * 0.48, -0.02);
+    for (let i = 0; i < 4; i++) put('lupine', -0.75 + i * 0.5, -0.33, 1.05);
+  }
+  return g;
+}
+function flowers(R) { return plantBed(R, 'round'); }
+function flowersRect(R) { return plantBed(R, 'rect'); }
+function flowersProc(R) {
   const g = new THREE.Group();
   add(g, new THREE.CylinderGeometry(0.92, 1.02, 0.12, 14), mat(SOIL, { r: 1 }), [0, 0.06, 0]);
   const cols = [0xe45f74, 0xf2c14e, 0xf5f2ea, 0xb372d7, 0xe97733];
@@ -358,7 +452,7 @@ function fern(R) {
   }
   return g;
 }
-function flowersRect(R) {
+function flowersRectProc(R) {
   const g = new THREE.Group();
   add(g, new THREE.BoxGeometry(2.2, 0.14, 1.1), mat(SOIL, { r: 1 }), [0, 0.07, 0]);
   const cols = [0xe45f74, 0xf2c14e, 0xf5f2ea, 0xb372d7, 0xe97733];
@@ -534,7 +628,55 @@ function firepit(R) {
 }
 
 /* ---------------- water ---------------- */
+// Natural pond: glossy dark water that reflects a sky gradient, edged with the
+// scanned mossy rocks, ferns at the back and a lotus clump on the water.
+const POND_USES = ['boulder', 'fern', 'pond_lotus'];
+let _skyEnv = null;
+function skyEnv() {
+  if (_skyEnv) return _skyEnv;
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+  const x = c.getContext('2d'), gr = x.createLinearGradient(0, 0, 0, 128);
+  gr.addColorStop(0, '#7fa9d6'); gr.addColorStop(0.47, '#d7e5ee'); gr.addColorStop(0.53, '#7d8a72'); gr.addColorStop(1, '#3d4a38');
+  x.fillStyle = gr; x.fillRect(0, 0, 256, 128);
+  _skyEnv = new THREE.CanvasTexture(c);
+  _skyEnv.mapping = THREE.EquirectangularReflectionMapping;
+  _skyEnv.colorSpace = THREE.SRGBColorSpace;
+  return _skyEnv;
+}
 function pond(R) {
+  const rocks = variantCache.boulder;
+  if (!rocks) return pondProc(R);
+  const g = new THREE.Group();
+  const RX = 1.6, RZ = 1.12;
+  const disc = () => new THREE.CircleGeometry(1, 48).rotateX(-Math.PI / 2);
+  const bank = add(g, disc(), mat(0x3f3427, { r: 1 }), [0, 0.012, 0], [0, 0, 0], [RX + 0.22, 1, RZ + 0.22]);
+  bank.castShadow = false;
+  const water = add(g, disc(), new THREE.MeshStandardMaterial({ color: 0x1b302b, roughness: 0.05, metalness: 0, envMap: skyEnv(), envMapIntensity: 1 }),
+    [0, 0.03, 0], [0, 0, 0], [RX, 1, RZ]);
+  water.castShadow = false;
+  const n = 17;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + (R() - 0.5) * 0.18;
+    const k = 1.02 + R() * 0.08;
+    const r = rocks[Math.floor(R() * rocks.length)].clone(true);
+    r.position.set(Math.cos(a) * RX * k, -0.04, Math.sin(a) * RZ * k);
+    r.rotation.y = R() * Math.PI * 2;
+    r.scale.setScalar(0.3 + R() * 0.17);
+    g.add(r);
+  }
+  const put = (id, x, y, z, s) => {
+    if (!modelCache[id]) return;
+    const c = modelCache[id].clone(true);
+    c.position.set(x, y, z); c.rotation.y = R() * Math.PI * 2; c.scale.setScalar(s);
+    g.add(c);
+  };
+  put('fern', -0.9, 0, -RZ - 0.35, 0.85);
+  put('fern', 0.5, 0, -RZ - 0.4, 0.75);
+  put('pond_lotus', 0.55, 0.02, 0.25, 0.9);
+  put('pond_lotus', -0.7, 0.02, 0.1, 0.7);
+  return g;
+}
+function pondProc(R) {
   const g = new THREE.Group();
   add(g, new THREE.CylinderGeometry(1.35, 1.45, 0.09, 20), WATER(), [0, 0.045, 0], [0, 0, 0], [1.2, 1, 0.85]);
   for (let i = 0; i < 12; i++) {
@@ -601,7 +743,7 @@ export const ASSETS = [
   { id: 'juniper',   name: 'Juniper',         icon: '🌲', cat: 'Trees',            fp: 1.8, build: cypress, only: 'co' },
   { id: 'shrub',     name: 'Evergreen huckleberry', icon: '🫐', cat: 'Shrubs & flowers', fp: 0.7, build: shrub },
   { id: 'hedge',     name: 'Hedge',           icon: '🟩', cat: 'Shrubs & flowers', fp: 0.8, build: hedge },
-  { id: 'flowers',   name: 'Flower bed',      icon: '🌸', cat: 'Shrubs & flowers', fp: 1.1, build: flowers },
+  { id: 'flowers',   name: 'Flower bed',      icon: '🌸', cat: 'Shrubs & flowers', fp: 1.1, build: flowers, uses: BED_USES },
   { id: 'grasstuft', name: 'Ornamental grass',icon: '🌾', cat: 'Shrubs & flowers', fp: 0.5, build: grasstuft },
   { id: 'rose',      name: 'Rose bush',       icon: '🌹', cat: 'Shrubs & flowers', fp: 0.7, build: rose },
   { id: 'lavender',  name: 'Lavender',        icon: '💜', cat: 'Shrubs & flowers', fp: 0.5, build: lavender },
@@ -609,9 +751,9 @@ export const ASSETS = [
   { id: 'hydrangea', name: 'Hydrangea',       icon: '🌼', cat: 'Shrubs & flowers', fp: 0.8, build: rhodie },
   { id: 'yucca',     name: 'Yucca',           icon: '🌵', cat: 'Shrubs & flowers', fp: 0.9, build: fern, only: 'co' },
   { id: 'lupine',    name: 'Lupine',          icon: '🪻', cat: 'Shrubs & flowers', fp: 0.5, build: lavender, only: 'co' },
-  { id: 'columbine', name: 'Columbine',       icon: '🌸', cat: 'Shrubs & flowers', fp: 0.4, build: flowers, only: 'co' },
+  { id: 'columbine', name: 'Columbine',       icon: '🌸', cat: 'Shrubs & flowers', fp: 0.4, build: lavender, only: 'co' },
   { id: 'fern',      name: 'Sword fern',      icon: '🌿', cat: 'Shrubs & flowers', fp: 0.7, build: fern },
-  { id: 'flowersrect', name: 'Flower bed (rect)', icon: '🌷', cat: 'Shrubs & flowers', fp: 1.3, build: flowersRect },
+  { id: 'flowersrect', name: 'Flower bed (rect)', icon: '🌷', cat: 'Shrubs & flowers', fp: 1.3, build: flowersRect, uses: BED_USES },
   { id: 'boulder',   name: 'Boulder',         icon: '🪨', cat: 'Hardscape',        fp: 0.9, build: boulder },
   { id: 'stepstones',name: 'Stepping stones', icon: '⬜', cat: 'Hardscape',        fp: 1.2, build: stepstones },
   { id: 'gravel',    name: 'Gravel bed',      icon: '▫️', cat: 'Hardscape',        fp: 1.2, build: gravel },
@@ -622,7 +764,7 @@ export const ASSETS = [
   { id: 'arch',      name: 'Garden arch',     icon: '🎪', cat: 'Structures',       fp: 0.9, build: arch },
   { id: 'bench',     name: 'Bench',           icon: '🪑', cat: 'Structures',       fp: 0.9, build: bench },
   { id: 'firepit',   name: 'Fire pit',        icon: '🔥', cat: 'Structures',       fp: 0.9, build: firepit },
-  { id: 'pond',      name: 'Pond',            icon: '💧', cat: 'Water',            fp: 1.9, build: pond },
+  { id: 'pond',      name: 'Pond',            icon: '💧', cat: 'Water',            fp: 1.9, build: pond, uses: POND_USES },
   { id: 'fountain',  name: 'Fountain',        icon: '⛲', cat: 'Water',            fp: 1.1, build: fountain },
   { id: 'birdbath',  name: 'Bird bath',       icon: '🕊️', cat: 'Water',            fp: 0.5, build: birdbath },
   { id: 'lamp',      name: 'Garden lamp',     icon: '💡', cat: 'Decor',            fp: 0.4, build: lamp },
@@ -633,7 +775,9 @@ export function assetDef(id) { return ASSETS.find(a => a.id === id); }
 
 export function buildAsset(id, seed) {
   if (modelCache[id]) {
-    const g = modelCache[id].clone(true);
+    const vs = variantCache[id];
+    const src = vs && vs.length > 1 ? vs[Math.floor(makeRng(seed)() * vs.length)] : modelCache[id];
+    const g = src.clone(true);
     g.userData.assetId = id;
     return g;
   }
@@ -873,19 +1017,19 @@ function warehouse(R) {
 }
 
 ASSETS.push(
-  { id: 'ranch',     name: 'Ranch home',        icon: '🏠', cat: 'Homes — single story', fp: 4.3, build: ranch,     tint: ['body', 'roof'], colors: { body: '#d9d2c3', roof: '#6b6560' } },
-  { id: 'cottage',   name: 'Cottage',           icon: '🏡', cat: 'Homes — single story', fp: 3.3, build: cottage, tint: ['body', 'roof'], colors: { body: '#c9d4c5', roof: '#7c5648' } },
-  { id: 'lranch',    name: 'L-shaped ranch',    icon: '🛖', cat: 'Homes — single story', fp: 4.3, build: lranch,    tint: ['body', 'roof'], colors: { body: '#d6c9b2', roof: '#5f5b56' } },
+  { id: 'ranch',     name: 'Ranch home',        icon: '🏠', cat: 'Homes — single story', fp: 4.3, build: ranch },
+  { id: 'cottage',   name: 'Cottage',           icon: '🏡', cat: 'Homes — single story', fp: 3.3, build: cottage },
+  { id: 'lranch',    name: 'Gable ranch',       icon: '🛖', cat: 'Homes — single story', fp: 4.3, build: lranch },
   { id: 'colonial',  name: 'Two-story home',    icon: '🏛️', cat: 'Homes — two story',    fp: 4.3, build: colonial },
-  { id: 'modern2',   name: 'Modern two-story',  icon: '🪟', cat: 'Homes — two story',    fp: 4.0, build: modern2,   tint: ['body', 'roof'], colors: { body: '#e8e6e0', roof: '#3f4348' } },
+  { id: 'modern2',   name: 'Modern two-story',  icon: '🪟', cat: 'Homes — two story',    fp: 4.0, build: modern2 },
   { id: 'jhouse',    name: 'Japanese-style home', icon: '🏯', cat: 'Homes — two story',  fp: 5.5, build: modern2 },
-  { id: 'farmhouse', name: 'Craftsman home',    icon: '🌾', cat: 'Homes — two story',    fp: 4.0, build: farmhouse },
-  { id: 'garage',    name: 'Detached garage',   icon: '🚗', cat: 'Outbuildings',         fp: 3.6, build: garage,    tint: ['body', 'roof'], colors: { body: '#d0cabb', roof: '#6b6560' } },
+  { id: 'farmhouse', name: 'Modern farmhouse',  icon: '🌾', cat: 'Homes — two story',    fp: 4.0, build: farmhouse },
+  { id: 'garage',    name: 'Detached garage',   icon: '🚗', cat: 'Outbuildings',         fp: 3.6, build: garage },
   { id: 'barn',      name: 'Barn',              icon: '🐮', cat: 'Outbuildings',         fp: 4.7, build: barn },
   { id: 'shed',      name: 'Shed',              icon: '🛠️', cat: 'Outbuildings',         fp: 2.0, build: shed },
-  { id: 'storefront',name: 'Storefront',        icon: '🏪', cat: 'Commercial',           fp: 4.5, build: storefront,tint: ['body', 'roof'], colors: { body: '#c9b8a0', roof: '#a63d3f' } },
-  { id: 'office',    name: 'Office building',   icon: '🏢', cat: 'Commercial',           fp: 4.5, build: office,    tint: ['body', 'roof'], colors: { body: '#a9adb3', roof: '#7d838a' } },
-  { id: 'warehouse', name: 'Warehouse',         icon: '🏭', cat: 'Commercial',           fp: 6.6, build: warehouse, tint: ['body', 'roof'], colors: { body: '#9aa0a6', roof: '#84898f' } },
+  { id: 'storefront',name: 'Storefront',        icon: '🏪', cat: 'Commercial',           fp: 4.5, build: storefront },
+  { id: 'office',    name: 'Office building',   icon: '🏢', cat: 'Commercial',           fp: 4.5, build: office },
+  { id: 'warehouse', name: 'Warehouse',         icon: '🏭', cat: 'Commercial',           fp: 6.6, build: warehouse },
 );
 
 /* ================= drawn curves (walls & paving) ================= */
@@ -899,7 +1043,7 @@ export const CURVES = [
   { id: 'concwall',   name: 'Concrete wall (draw)',      icon: '⬜', kind: 'sweep',  width: 0.28, height: 0.9,  colors: { body: '#b6b1a7' } },
   { id: 'walkway',    name: 'Concrete walkway (draw)',   icon: '🚶', kind: 'sweep',  width: 1.2,  height: 0.07, tex: 'concrete', colors: { body: '#c0bbb0' } },
   { id: 'driveway',   name: 'Driveway (draw)',           icon: '🛣️', kind: 'sweep',  width: 3.2,  height: 0.09, tex: 'concrete', colors: { body: '#b3aea4' } },
-  { id: 'drycreek',   name: 'Dry creek bed (draw)',      icon: '🏞️', kind: 'creek',  width: 1.2,  height: 0.07, tex: 'rockmulch', texDesat: false, colors: { body: '#b6b0a5' } },
+  { id: 'drycreek',   name: 'Dry creek bed (draw)',      icon: '🏞️', kind: 'creek',  width: 1.7,  height: 0.07, tex: 'rockmulch', texDesat: false, colors: { body: '#c9c3b8' }, cut: { width: 1.7, depth: 0.13, flat: 0.62, lip: false, tint: '#8c8476' }, uses: ['boulder'] },
 ];
 
 export function curveDef(id) { return CURVES.find(c => c.id === id); }
@@ -1186,25 +1330,28 @@ export function buildCurve(id, pts, seed, colors, opts = {}) {
     return g;
   }
   if (def.kind === 'creek') {
-    // pebble ribbon with rock-lined banks
+    // River-rock swale: the terrain is cut (def.cut) and pts arrive at the cut
+    // bottom; pebbles fill the flat bottom, scanned rocks line both banks.
+    const half = def.cut.width / 2, flatHalf = half * def.cut.flat;
     const m = dsMat(new THREE.Color(bodyC).getHex(), { r: 1 });
     m.map = detailTexture(def.tex, { desat: false });
     m.flatShading = false;
-    const me = new THREE.Mesh(sweepGeo(pts, def.width, def.height), m);
-    me.receiveShadow = true;
-    me.userData.tint = 'body';
-    g.add(me);
+    const bed = new THREE.Mesh(sweepGeo(pts, flatHalf * 2 + 0.06, 0.02), m);
+    bed.receiveShadow = true;
+    bed.userData.tint = 'body';
+    g.add(bed);
+    const rocks = variantCache.boulder;
     const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)));
-    const n = Math.min(240, Math.max(4, Math.round(curve.getLength() / 0.6)));
+    const n = Math.min(260, Math.max(4, Math.round(curve.getLength() / 0.34)));
     const P = curve.getSpacedPoints(n);
-    const grays = [0x7d766c, 0x8a8276, 0x6e6960, 0x94897a];
-    const rockGeo = (s) => {
-      const geo = new THREE.IcosahedronGeometry(s, 1);
-      const pos = geo.attributes.position;
-      for (let i = 0; i < pos.count; i++)
-        pos.setXYZ(i, pos.getX(i) * (0.86 + R() * 0.26), pos.getY(i) * (0.52 + R() * 0.22), pos.getZ(i) * (0.86 + R() * 0.26));
-      geo.computeVertexNormals();
-      return geo;
+    const fallbackGeo = new THREE.IcosahedronGeometry(1, 1);
+    const stone = (x, y, z, s) => {
+      let r;
+      if (rocks) { r = rocks[Math.floor(R() * rocks.length)].clone(true); r.scale.setScalar(s / 0.85); }
+      else { r = new THREE.Mesh(fallbackGeo, mat(0x8a8276, { flat: true, r: 1 })); r.scale.set(s * 0.9, s * 0.5, s * 0.8); }
+      r.position.set(x, y, z);
+      r.rotation.y = R() * Math.PI * 2;
+      g.add(r);
     };
     for (let i = 0; i <= n; i++) {
       const p = P[i];
@@ -1213,27 +1360,21 @@ export function buildCurve(id, pts, seed, colors, opts = {}) {
       if (t.lengthSq() < 1e-8) t.set(1, 0, 0); else t.normalize();
       const nx = -t.z, nz = t.x;
       for (const side of [-1, 1]) {
-        if (R() < 0.45) continue; // gaps keep the banks natural
-        const s = 0.1 + R() * 0.11;
-        const rock = new THREE.Mesh(
-          rockGeo(s),
-          mat(grays[Math.floor(R() * grays.length)], { flat: true, r: 1 }));
-        const off = def.width / 2 + s * 0.4 + R() * 0.08;
-        rock.position.set(p.x + nx * off * side, p.y + s * 0.2, p.z + nz * off * side);
-        rock.rotation.y = R() * Math.PI * 2;
-        rock.castShadow = rock.receiveShadow = true;
-        g.add(rock);
+        // a row of larger stones up the bank, and smaller ones at its toe
+        const bankRise = (off) => def.cut.depth * Math.min(1, Math.max(0, (off - flatHalf) / (half - flatHalf)));
+        if (R() > 0.15) {
+          const s = 0.2 + R() * 0.2, off = flatHalf + (half - flatHalf) * (0.35 + R() * 0.5);
+          stone(p.x + nx * off * side, p.y + bankRise(off) - s * 0.3, p.z + nz * off * side, s);
+        }
+        if (R() > 0.4) {
+          const s = 0.1 + R() * 0.1, off = flatHalf - 0.05 + R() * 0.12;
+          stone(p.x + nx * off * side, p.y + bankRise(off) - s * 0.25, p.z + nz * off * side, s);
+        }
       }
-      // occasional larger accent boulder in the channel
-      if (i % 7 === 3 && R() < 0.6) {
-        const s = 0.15 + R() * 0.11;
-        const rock = new THREE.Mesh(
-          rockGeo(s),
-          mat(grays[Math.floor(R() * grays.length)], { flat: true, r: 1 }));
-        rock.position.set(p.x + (R() - 0.5) * def.width * 0.5, p.y + s * 0.25, p.z + (R() - 0.5) * def.width * 0.5);
-        rock.rotation.y = R() * Math.PI * 2;
-        rock.castShadow = rock.receiveShadow = true;
-        g.add(rock);
+      // the odd larger stone sitting in the channel
+      if (i % 9 === 4 && R() < 0.55) {
+        const s = 0.22 + R() * 0.14;
+        stone(p.x + (R() - 0.5) * flatHalf, p.y - s * 0.2, p.z + (R() - 0.5) * flatHalf, s);
       }
     }
     return g;

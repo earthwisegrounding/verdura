@@ -128,6 +128,8 @@ export class Terrain {
     eff.set(h);
     this.disturbed = this.disturbed || new Uint8Array(N * N);
     this.disturbed.fill(0);
+    this.cutTint = this.cutTint || new Array(N * N);
+    this.cutTint.fill(null);
     const cell = SIZE / SEGS;
     for (const cut of this.cuts) {
       const half = cut.width / 2;
@@ -144,9 +146,13 @@ export class Terrain {
           const px = ax + dx * t, pz = az + dz * t;
           const dist = Math.hypot(x - px, z - pz);
           const i = iz * N + ix;
-          if (dist <= half + cell * 1.1) this.disturbed[i] = 1; // spoil/lip around the cut
+          if (cut.lip !== false && dist <= half + cell * 1.1) this.disturbed[i] = 1; // spoil/lip around the cut
+          if (cut.tint && dist <= half + cell) this.cutTint[i] = cut.tint;
           if (dist > half) continue;
-          eff[i] = Math.min(eff[i], h[i] - cut.depth);
+          // flat bottom across cut.flat of the width, then a straight bank up to grade
+          let dd = cut.depth;
+          if (cut.flat != null && dist > half * cut.flat) dd *= 1 - (dist - half * cut.flat) / (half * (1 - cut.flat));
+          eff[i] = Math.min(eff[i], h[i] - dd);
         }
       }
     }
@@ -163,7 +169,7 @@ export class Terrain {
       const n = this.noise[i];
       // dug below grade (trench, or lowered unpainted ground): show the soil
       const dug = Math.max(this.heights[i] - eff[i], this.paint[i] === 0 ? -eff[i] : 0);
-      const c = dug > 0.04 ? soilAt(dug, tmp) : this.disturbed[i] ? soilAt(0, tmp) : this._cols[this.paint[i]];
+      const c = this.cutTint[i] ? tmp.set(this.cutTint[i]) : dug > 0.04 ? soilAt(dug, tmp) : this.disturbed[i] ? soilAt(0, tmp) : this._cols[this.paint[i]];
       col.setXYZ(i, Math.min(1, c.r * n), Math.min(1, c.g * n), Math.min(1, c.b * n));
     }
     pos.needsUpdate = true;

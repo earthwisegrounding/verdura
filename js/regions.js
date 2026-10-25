@@ -40,7 +40,7 @@ export const REGIONS = {
       shrub: 'Big sagebrush',
       hedge: 'Boxwood hedge',
       path: 'Flagstone path',
-      farmhouse: 'Craftsman home',
+      farmhouse: 'Modern farmhouse',
       colonial: 'Two-story home',
     },
     curves: ['rockwall', 'stonewall', 'fencedraw', 'walkway', 'driveway', 'drycreek'],
