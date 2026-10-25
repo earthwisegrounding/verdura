@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { waterSide, WATER_LEVEL } from './terrain.js?v=2';
 
 // Real-model overrides: id -> file + target height (models are normalized to
 // this height with their base at y=0 when loaded).
@@ -44,6 +45,7 @@ export const MODELS = {
   modern2:   { url: 'assets/models/house_modern.glb',    height: 7.9,  fp: 6.5 },
   jhouse:    { url: 'assets/models/house_japanese2.glb', width: 12,    fp: 6.0 },
   farmhouse: { url: 'assets/models/house_farmhouse.glb', width: 19.5,  fp: 9.5 },
+  whitefarm: { url: 'assets/models/house_meshyfarm.glb', width: 18.5,  fp: 9.5 },
   garage:    { url: 'assets/models/garage.glb',          width: 7.3,   fp: 4.2 },
   storefront:{ url: 'assets/models/storefront.glb',      height: 8.5,  fp: 10, rotY: -Math.PI / 2, bright: 1.7 },
   office:    { url: 'assets/models/office.glb',          height: 9.5,  fp: 16 },
@@ -1024,6 +1026,7 @@ ASSETS.push(
   { id: 'modern2',   name: 'Modern two-story',  icon: '🪟', cat: 'Homes — two story',    fp: 4.0, build: modern2 },
   { id: 'jhouse',    name: 'Japanese-style home', icon: '🏯', cat: 'Homes — two story',  fp: 5.5, build: modern2 },
   { id: 'farmhouse', name: 'Modern farmhouse',  icon: '🌾', cat: 'Homes — two story',    fp: 4.0, build: farmhouse },
+  { id: 'whitefarm', name: 'White farmhouse',   icon: '🏘️', cat: 'Homes — two story',    fp: 4.0, build: farmhouse },
   { id: 'garage',    name: 'Detached garage',   icon: '🚗', cat: 'Outbuildings',         fp: 3.6, build: garage },
   { id: 'barn',      name: 'Barn',              icon: '🐮', cat: 'Outbuildings',         fp: 4.7, build: barn },
   { id: 'shed',      name: 'Shed',              icon: '🛠️', cat: 'Outbuildings',         fp: 2.0, build: shed },
@@ -1043,6 +1046,9 @@ export const CURVES = [
   { id: 'concwall',   name: 'Concrete wall (draw)',      icon: '⬜', kind: 'sweep',  width: 0.28, height: 0.9,  colors: { body: '#b6b1a7' } },
   { id: 'walkway',    name: 'Concrete walkway (draw)',   icon: '🚶', kind: 'sweep',  width: 1.2,  height: 0.07, tex: 'concrete', colors: { body: '#c0bbb0' } },
   { id: 'driveway',   name: 'Driveway (draw)',           icon: '🛣️', kind: 'sweep',  width: 3.2,  height: 0.09, tex: 'concrete', colors: { body: '#b3aea4' } },
+  { id: 'terrace',    name: 'Raised terrace (draw)',     icon: '🟩', kind: 'terrace', width: 0.3, height: 0.6, tex: 'splitface', colors: { body: '#bab5ad' } },
+  { id: 'beachfront', name: 'Beachfront (draw)',         icon: '🏖️', kind: 'shore', shore: 'beach', width: 0.6, height: 0.02, colors: { body: '#d6c59b' } },
+  { id: 'bulkhead',   name: 'Bulkhead / seawall (draw)', icon: '🌊', kind: 'shore', shore: 'bulkhead', width: 0.5, height: 0.2, tex: 'concrete', colors: { body: '#bdb8ae' } },
   { id: 'drycreek',   name: 'Dry creek bed (draw)',      icon: '🏞️', kind: 'creek',  width: 1.7,  height: 0.07, tex: 'rockmulch', texDesat: false, colors: { body: '#c9c3b8' }, cut: { width: 1.7, depth: 0.13, flat: 0.62, lip: false, tint: '#8c8476' }, uses: ['boulder'] },
 ];
 
@@ -1094,16 +1100,251 @@ function sweepGeo(pts, width, height) {
   return g;
 }
 
+// One chamfered wall unit (block, cap or timber), centered on the origin with
+// its length along x and depth along z: an inset rectangle extruded with a
+// 1-step bevel keeps the outer size exact while the edges catch light.
+// Box-projected UVs in meters (random offset per unit so no two faces match);
+// grain=true runs the texture's v along the unit's length (timber).
+function unitGeo(len, hh, d, bev, tone, R, tex, grain = false) {
+  const sh = new THREE.Shape();
+  sh.moveTo(-len / 2 + bev, -hh / 2 + bev); sh.lineTo(len / 2 - bev, -hh / 2 + bev);
+  sh.lineTo(len / 2 - bev, hh / 2 - bev); sh.lineTo(-len / 2 + bev, hh / 2 - bev);
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: d - 2 * bev, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 1, curveSegments: 1 });
+  geo.translate(0, 0, -(d - 2 * bev) / 2);
+  const pos = geo.attributes.position, nor = geo.attributes.normal, uv = geo.attributes.uv;
+  const n = new THREE.Vector3(), ou = R() * 7, ov = R() * 7;
+  for (let i = 0; i < pos.count; i++) {
+    n.fromBufferAttribute(nor, i);
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
+    const [a, b] = az >= ax && az >= ay ? [x, y] : ay >= ax ? [x, z] : [z, y];
+    if (grain) uv.setXY(i, ou + b * tex, ov + a * tex); else uv.setXY(i, ou + a * tex, ov + b * tex);
+  }
+  const col = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) col.set(tone, i * 3);
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return geo;
+}
+
+// A box-section band along points P (Vector3, y = ground) offset across the
+// path along the unit vectors D[i] by o0..o1, from yb(i) up to yt(i). Closed
+// loops wrap around; open ones get end caps. UVs are in meters.
+function bandGeo(P, D, closed, o0, o1, yb, yt, tone, tex) {
+  const n = P.length, pos = [], uv = [];
+  const along = [0];
+  for (let i = 1; i <= n; i++) along.push(along[i - 1] + (i < n || closed ? P[i % n].distanceTo(P[i - 1]) : 0));
+  const at = (i, o, top) => { const k = i % n; return [P[k].x + D[k].x * o, top ? yt(k) : yb(k), P[k].z + D[k].z * o]; };
+  const quad = (a, b, c, d, ua, ub) => {
+    for (const [p, q] of [[a, ua[0]], [b, ua[1]], [c, ub[1]], [a, ua[0]], [c, ub[1]], [d, ub[0]]]) { pos.push(...p); uv.push(q[0] * tex, q[1] * tex); }
+  };
+  const segs = closed ? n : n - 1;
+  for (let i = 0; i < segs; i++) {
+    const j = i + 1, s0 = along[i], s1 = along[j];
+    for (const [o, flip] of [[o1, false], [o0, true]]) {
+      const b0 = at(i, o, false), b1 = at(j, o, false), t0 = at(i, o, true), t1 = at(j, o, true);
+      if (flip) quad(b1, b0, t0, t1, [[s1, b1[1]], [s0, b0[1]]], [[s1, t1[1]], [s0, t0[1]]]);
+      else quad(b0, b1, t1, t0, [[s0, b0[1]], [s1, b1[1]]], [[s0, t0[1]], [s1, t1[1]]]);
+    }
+    quad(at(i, o1, true), at(j, o1, true), at(j, o0, true), at(i, o0, true), [[s0, o1], [s1, o1]], [[s0, o0], [s1, o0]]);
+  }
+  if (!closed) {
+    for (const [i, flip] of [[0, true], [n - 1, false]]) {
+      const a = at(i, o0, false), b = at(i, o1, false), c = at(i, o1, true), d = at(i, o0, true);
+      if (flip) quad(b, a, d, c, [[o1, b[1]], [o0, a[1]]], [[o0, d[1]], [o1, c[1]]]);
+      else quad(a, b, c, d, [[o0, a[1]], [o1, b[1]]], [[o1, c[1]], [o0, d[1]]]);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  const col = new Float32Array(pos.length);
+  for (let i = 0; i < pos.length; i += 3) col.set(tone, i);
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.computeVertexNormals();
+  return g;
+}
+
+// Offset directions for a polyline: the left normal (-t.z, t.x) of each
+// segment, mitered at joints so bands keep their width round corners.
+function leftNormals(P, closed) {
+  const n = P.length, seg = [];
+  const segs = closed ? n : n - 1;
+  for (let i = 0; i < segs; i++) {
+    const a = P[i], b = P[(i + 1) % n];
+    const t = new THREE.Vector3(b.x - a.x, 0, b.z - a.z).normalize();
+    seg.push(new THREE.Vector3(-t.z, 0, t.x));
+  }
+  return P.map((_, i) => {
+    const prev = closed ? seg[(i - 1 + segs) % segs] : seg[Math.max(0, i - 1)];
+    const next = closed ? seg[i % segs] : seg[Math.min(segs - 1, i)];
+    const m = prev.clone().add(next);
+    if (m.lengthSq() < 1e-6) return next.clone();
+    m.normalize();
+    return m.multiplyScalar(1 / Math.max(0.35, m.dot(next)));
+  });
+}
+
+// Raised terrace walls (see terraceWall). The terrain's step from grade up to
+// the fill sits at the outline's face at the bottom and this far inside it at
+// the top, so it stays within the wall body (past block setback).
+export const TERRACE_STYLES = { block: 'Split-face block', concrete: 'Poured concrete', timber: 'Timber' };
+export function terraceInset(style) { return style === 'concrete' || style === 'timber' ? 0.05 : 0.1; }
+
+// Retaining wall round a raised terrace. pts are the outline's corners with y =
+// grade there; the fill (Terrain) tops out level at the highest corner +
+// height, so the wall is as tall as each stretch needs. The wall's face sits
+// on the outline with the body inside it; corners interlock course by course.
+function terraceWall(def, pts, R, bodyC, opts, g) {
+  let P = pts.map(p => new THREE.Vector3(...p));
+  if (P.length < 2) return g;
+  const closed = P.length >= 3;
+  let area = 0;
+  for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; area += a.x * b.z - b.x * a.z; }
+  if (closed && area < 0) P = P.reverse(); // inside on every edge's left
+  const height = opts.height ?? def.height;
+  const style = opts.wall || 'block';
+  const top = Math.max(...P.map(p => p.y)) + height;
+  const minGrade = Math.min(...P.map(p => p.y));
+  const n = P.length, segs = closed ? n : n - 1;
+  const edges = [];
+  for (let i = 0; i < segs; i++) {
+    const a = P[i], b = P[(i + 1) % n];
+    const t = new THREE.Vector3(b.x - a.x, 0, b.z - a.z);
+    const L = t.length();
+    t.normalize();
+    edges.push({ a, b, t, L, nrm: new THREE.Vector3(-t.z, 0, t.x) });
+  }
+  // a corner turning toward the inside (left) is convex
+  const convex = (i) => {
+    if (!closed) return false;
+    const e1 = edges[(i - 1 + segs) % segs].t, e2 = edges[i % segs].t;
+    return e1.x * e2.z - e1.z * e2.x > 1e-4;
+  };
+  const material = (tex, nor) => {
+    const m = mat(new THREE.Color(bodyC).getHex(), { r: 0.95 });
+    m.vertexColors = true;
+    m.map = detailTexture(tex, { desat: true, contrast: 1 });
+    if (nor) { m.normalMap = normalTexture(nor); m.normalScale = new THREE.Vector2(1.4, 1.4); }
+    return m;
+  };
+  const addMesh = (geos, m) => {
+    if (!geos.length) return;
+    const merged = mergeGeometries(geos);
+    geos.forEach(q => q.dispose());
+    const mesh = new THREE.Mesh(merged, m);
+    mesh.castShadow = mesh.receiveShadow = true;
+    mesh.userData.tint = 'body';
+    g.add(mesh);
+  };
+  if (style === 'concrete') {
+    // poured wall with a cast cap, one mitered band round the outline
+    const D = leftNormals(P, closed);
+    const yb = (k) => P[k].y - 0.2;
+    const wall = bandGeo(P, D, closed, -0.02, 0.28, yb, () => top + 0.02, [0.95, 0.95, 0.95], 0.45);
+    const cap = bandGeo(P, D, closed, -0.06, 0.34, () => top - 0.04, () => top + 0.07, [1.04, 1.04, 1.03], 0.45);
+    addMesh([wall, cap], material('concrete'));
+    return g;
+  }
+  // stacked units: split-face block (setback courses + cap) or 6x6 timbers
+  const T = style === 'timber'
+    ? { unit: 2.4, course: 0.15, depth: 0.15, joint: 0.004, setback: 0, bev: 0.012, tex: 1.6, cap: null }
+    : { unit: 0.46, course: 0.152, depth: 0.28, joint: 0.006, setback: 0.012, bev: 0.009, tex: 2.6, cap: { h: 0.075, d: 0.31, unit: 0.61 } };
+  const capTop = top + 0.04;
+  const stackTop = T.cap ? capTop - T.cap.h : capTop;
+  const nCourses = Math.max(1, Math.ceil((stackTop - (minGrade - 0.06)) / T.course));
+  const TIMBER = [[0.62, 0.55, 0.47], [0.7, 0.62, 0.52], [0.55, 0.5, 0.44], [0.66, 0.6, 0.53]];
+  const BLEND = [[0.66, 0.66, 0.68], [0.95, 0.95, 0.95], [1.08, 1.0, 0.88], [0.86, 0.81, 0.76], [0.78, 0.78, 0.8]];
+  const tone = () => {
+    const set = style === 'timber' ? TIMBER : BLEND;
+    const t = set[Math.floor(R() * set.length)], k = 0.94 + R() * 0.12;
+    return t.map(v => v * k);
+  };
+  const parts = [];
+  // lay one course (or the cap) along every edge; at convex corners one edge
+  // runs through to the other's face and the other butts into it, swapping
+  // each course like real corner blocks
+  const layer = (c, y0, h, depth, sb, unit, capTone) => {
+    const face = sb - 0.02; // units' outer face, just proud of the outline
+    edges.forEach((e, i) => {
+      const startThrough = c % 2 === 1, endThrough = c % 2 === 0;
+      const s0 = convex(i) ? (startThrough ? face - T.joint / 2 : face + depth + T.joint / 2) : 0;
+      const s1 = e.L - (convex(i + 1) ? (endThrough ? face - T.joint / 2 : face + depth + T.joint / 2) : 0);
+      const len = s1 - s0;
+      if (len < 0.08) return;
+      const k = Math.max(1, Math.round(len / unit)), seg = len / k;
+      const shift = c % 2 && k > 1 ? seg / 2 : 0;
+      const cuts = [s0];
+      for (let b = s0 + (shift || seg); b < s1 - 0.03; b += seg) cuts.push(b);
+      cuts.push(s1);
+      const lift = (i % 2) * 0.0015; // keeps any corner overlap from z-fighting
+      for (let q = 0; q < cuts.length - 1; q++) {
+        const ul = cuts[q + 1] - cuts[q] - T.joint;
+        if (ul < 0.06) continue;
+        const sm = (cuts[q] + cuts[q + 1]) / 2;
+        const grade = e.a.y + (e.b.y - e.a.y) * (sm / e.L);
+        if (y0 + h < grade - 0.02) continue; // fully buried on a slope
+        const geo = unitGeo(ul, h - T.joint, depth + (R() - 0.5) * 0.01, T.bev, capTone || tone(), R, T.tex, style === 'timber');
+        const off = sb + depth / 2 - 0.02;
+        const m4 = new THREE.Matrix4().makeRotationY(Math.atan2(e.t.x, e.t.z) - Math.PI / 2 + (R() - 0.5) * 0.008);
+        m4.setPosition(e.a.x + e.t.x * sm + e.nrm.x * off, y0 + h / 2 + lift, e.a.z + e.t.z * sm + e.nrm.z * off);
+        geo.applyMatrix4(m4);
+        parts.push(geo);
+      }
+    });
+  };
+  for (let c = 0; c < nCourses; c++) {
+    layer(c, stackTop - (nCourses - c) * T.course, T.course, T.depth, Math.min(c * T.setback, 0.08), T.unit);
+  }
+  if (T.cap) layer(nCourses, stackTop, T.cap.h, T.cap.d, Math.min(nCourses * T.setback, 0.08) - 0.018, T.cap.unit, null);
+  addMesh(parts, style === 'timber' ? material('timber') : material(def.tex, def.tex + '_nor'));
+  return g;
+}
+
+// Concrete bulkhead (seawall) along a waterfront shoreline: the face drops to
+// below the bed, with a dark wet band and a lighter splash band at the
+// waterline, and a cast cap a little proud of the lawn.
+function seawall(def, pts, R, bodyC, opts, g) {
+  const side = waterSide(pts.map(p => [p[0] + (opts.x || 0), p[2] + (opts.z || 0)]), opts.flip);
+  // run the path with the water on its left, so bands wind outward
+  const path = (side > 0 ? pts : [...pts].reverse()).map(p => new THREE.Vector3(...p));
+  const curve = new THREE.CatmullRomCurve3(path);
+  const len = curve.getLength();
+  if (len < 0.2) return g;
+  const P = curve.getSpacedPoints(Math.min(400, Math.max(8, Math.round(len / 0.4))));
+  const D = leftNormals(P, false); // toward the water
+  const WL = WATER_LEVEL, bed = WL - 1.75;
+  const yTop = (k) => P[k].y + 0.12;
+  const bands = [
+    bandGeo(P, D, false, -0.06, 0.3, () => bed, () => WL - 0.04, [0.42, 0.42, 0.37], 0.5),
+    bandGeo(P, D, false, -0.06, 0.3, () => WL - 0.04, () => WL + 0.32, [0.68, 0.67, 0.61], 0.5),
+    bandGeo(P, D, false, -0.06, 0.3, () => WL + 0.32, (k) => yTop(k) - 0.22, [0.92, 0.92, 0.9], 0.5),
+    bandGeo(P, D, false, -0.12, 0.38, (k) => yTop(k) - 0.22, yTop, [1.02, 1.02, 1.0], 0.5),
+  ];
+  const m = mat(new THREE.Color(bodyC).getHex(), { r: 0.9 });
+  m.vertexColors = true;
+  m.map = detailTexture(def.tex, { desat: true, contrast: 1.1 });
+  const mesh = new THREE.Mesh(mergeGeometries(bands), m);
+  bands.forEach(b => b.dispose());
+  mesh.castShadow = mesh.receiveShadow = true;
+  mesh.userData.tint = 'body';
+  g.add(mesh);
+  return g;
+}
+
 export function buildCurve(id, pts, seed, colors, opts = {}) {
   const def = curveDef(id);
   const R = makeRng(seed);
   const g = new THREE.Group();
   g.userData.assetId = id;
   const bodyC = (colors && colors.body) || def.colors.body;
-  if (def.kind === 'trench') {
+  if (def.kind === 'terrace') return terraceWall(def, pts, R, bodyC, opts, g);
+  if (def.kind === 'shore' && def.shore === 'bulkhead') return seawall(def, pts, R, bodyC, opts, g);
+  if (def.kind === 'trench' || def.kind === 'shore') {
     // the cut itself lives in the terrain (Terrain.setCuts); this is just an
-    // invisible ribbon along the path so the trench can be clicked/selected
-    const me = new THREE.Mesh(sweepGeo(pts, def.width, 0.02),
+    // invisible ribbon along the path so it can be clicked/selected (a beach's
+    // sits at the waterline)
+    const path = def.kind === 'shore' ? pts.map(([x, , z]) => [x, WATER_LEVEL, z]) : pts;
+    const me = new THREE.Mesh(sweepGeo(path, def.width, def.kind === 'shore' ? 0.3 : 0.02),
       new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
     g.add(me);
     return g;
@@ -1186,7 +1427,6 @@ export function buildCurve(id, pts, seed, colors, opts = {}) {
       return t.map(v => v * k);
     };
     const parts = [];
-    const tmpN = new THREE.Vector3();
     const addUnit = (s0, s1, yLift, depth, h, back, tone, lip, bev) => {
       const len = s1 - s0 - JOINT;
       if (len < 0.06) return;
@@ -1198,26 +1438,7 @@ export function buildCurve(id, pts, seed, colors, opts = {}) {
       const nx = -t.z, nz = t.x; // wall face points to the tangent's left
       const gz = Math.hypot(t.x, t.z) || 1;
       const d = depth + (R() - 0.5) * 0.012, hh = h + (R() - 0.5) * 0.006;
-      // chamfered unit: an inset rectangle extruded with a 1-step bevel keeps
-      // the outer size exact while the edges catch light like tumbled block
-      const sh = new THREE.Shape();
-      sh.moveTo(-len / 2 + bev, -hh / 2 + bev); sh.lineTo(len / 2 - bev, -hh / 2 + bev);
-      sh.lineTo(len / 2 - bev, hh / 2 - bev); sh.lineTo(-len / 2 + bev, hh / 2 - bev);
-      const geo = new THREE.ExtrudeGeometry(sh, { depth: d - 2 * bev, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 1, curveSegments: 1 });
-      geo.translate(0, 0, -(d - 2 * bev) / 2);
-      // box-projected UVs in meters, random offset per unit so no two faces match
-      const pos = geo.attributes.position, nor = geo.attributes.normal, uv = geo.attributes.uv;
-      const ou = R() * 7, ov = R() * 7;
-      for (let i = 0; i < pos.count; i++) {
-        tmpN.fromBufferAttribute(nor, i);
-        const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-        const ax = Math.abs(tmpN.x), ay = Math.abs(tmpN.y), az = Math.abs(tmpN.z);
-        const [a, b] = az >= ax && az >= ay ? [x, y] : ay >= ax ? [x, z] : [z, y];
-        uv.setXY(i, ou + a * TEX, ov + b * TEX);
-      }
-      const col = new Float32Array(pos.count * 3);
-      for (let i = 0; i < pos.count; i++) col.set(tone, i * 3);
-      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      const geo = unitGeo(len, hh, d, bev, tone, R, TEX);
       const off = -back + lip;
       const m = new THREE.Matrix4().makeRotationY(yaw - Math.PI / 2 + (R() - 0.5) * 0.01);
       m.setPosition(p.x + (nx / gz) * off, p.y + yLift + h / 2, p.z + (nz / gz) * off);

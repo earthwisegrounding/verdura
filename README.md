@@ -19,21 +19,32 @@ download that the browser caches).
 
 ## Design mode (from scratch)
 
-- **41 procedural elements** — trees, shrubs, flowers, hardscape, structures
-  (pergola, fence, fire pit…), water features, decor, and buildings:
-  three single-story homes (ranch, cottage, L-shaped ranch), three two-story
-  homes (colonial, modern, farmhouse), outbuildings (detached garage, barn,
-  shed), and commercial buildings (storefront, office, warehouse). Every
-  placement is seed-randomized so no two oaks look alike.
+- **Elements** — trees, shrubs, flowers, hardscape, structures (pergola,
+  fence, fire pit…), water features, decor, and true-scale buildings:
+  single-story homes (ranch, cottage, gable ranch), two-story homes (two-story
+  colonial, modern, Japanese-style, modern farmhouse, white farmhouse),
+  outbuildings (detached garage, barn, shed), and commercial buildings
+  (storefront, office, warehouse). Every placement is seed-randomized so no
+  two oaks look alike.
 - **Draw tool (walls & paving)**: rock walls, concrete walls, walkways, and
   driveways (concrete or asphalt) are *drawn*, not placed — click points on
   the ground, double-click or Enter to finish, Esc to cancel. The path is
   smoothed into a spline, swept to the right width, and follows the terrain
   (rock walls are built stone-by-stone along the curve). Curves re-conform
   automatically after sculpting.
-- **Custom colors**: buildings and structures have Body and Roof/Accent color
-  pickers in the selection panel (walls, fences, pergolas, and benches are
-  recolorable too). Reset restores the defaults.
+- **Raised terraces**: draw a terrace by clicking its corners. The ground
+  inside fills up level (its highest corner + the chosen height, 1–5 ft) and
+  a retaining wall wraps the outline — split-face block (setback courses,
+  cap, interlocking corners), poured concrete, or timber. Height and wall
+  style are in the selection panel; the estimate prices wall face + fill.
+- **Waterfront**: draw a shoreline as a *Beachfront* (the lawn eases down to
+  the water as sand and keeps shelving out) or a *Bulkhead / seawall*
+  (concrete wall, lawn at full height to the cap, deep water straight off
+  it). Water fills the side away from the middle of the lot — *Flip water
+  side* swaps it — and shows in the earth-slab cross-section. Waterfronts
+  are site context, so they're left out of the estimate.
+- **Custom colors**: structures (walls, fences, pergolas, benches) have
+  color pickers in the selection panel. Reset restores the defaults.
 - **Terrain**: Raise/Lower sculpting brushes plus ground paint
   (grass / soil / mulch / stone / sand / beauty bark). Objects re-seat on the new height.
 - **Editing**: click to select, drag to move, rotate/scale sliders,
@@ -92,10 +103,11 @@ American brick building with shop → storefront), hamma085 (317 Washington
 Street → office building), prankscare99 (Industrial Warehouse).
 
 The garden fountain is CC0 by Isa Lousberg (via Poly Pizza). The hydrangea
-is a Quixel Megascans asset and the stacked stone block border a scanned
-block supplied by the project owner (both under their own licences).
+is a Quixel Megascans asset, and the stacked stone block border (a scanned
+block) and the white farmhouse (a Meshy AI model) were supplied by the
+project owner (all under their own licences).
 Ground, paving, siding, roof, and mulch detail textures are CC0 from Poly
-Haven (bed mulch is wood_chips); the block retaining wall's split-face
+Haven (bed mulch is wood_chips, timber walls rough_wood); the block retaining wall's split-face
 surface is Poly Haven's rock_face_03 (CC0), regraded for tinting. All
 processed and optimized for this app; remaining items are original
 procedural models.

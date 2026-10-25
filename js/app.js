@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { ASSETS, CURVES, buildAsset, buildCurve, assetDef, curveDef, applyTint, preloadModels, detailTexture } from './assets.js?v=2';
-import { Terrain, PAINTS } from './terrain.js?v=2';
+import { ASSETS, CURVES, buildAsset, buildCurve, assetDef, curveDef, applyTint, preloadModels, detailTexture, terraceInset, TERRACE_STYLES } from './assets.js?v=2';
+import { Terrain, PAINTS, SIZE, SEGS, waterSide } from './terrain.js?v=2';
 import * as Photo from './photo.js?v=2';
 import { saveLocal, loadLocal, hasLocal, downloadText, downloadDataUrl } from './storage.js?v=2';
-import { UNIT_COSTS, CURVE_RATES, PAINT_RATES, EXCLUDED_CATS, EXCLUDED_TYPES } from './costs.js';
+import { UNIT_COSTS, CURVE_RATES, PAINT_RATES, TERRACE_RATES, EXCLUDED_CATS, EXCLUDED_TYPES } from './costs.js';
 import { activeRegion } from './regions.js';
 
 /* ================= region edition ================= */
@@ -282,7 +282,7 @@ function spawnObject(world, item) {
   let obj;
   if (item.pts) {
     // cut first, so anything built along the path sits in the cut
-    if (world === design && curveDef(item.type) && curveDef(item.type).cut) syncCuts();
+    if (world === design && shapesGround(curveDef(item.type))) syncCuts();
     obj = buildCurve(item.type, resolveCurvePts(world, item), item.seed, item.colors, item);
     obj.position.set(item.x, 0, item.z);
   } else {
@@ -308,12 +308,17 @@ function assetDefAny(t) { return assetDef(t) || curveDef(t); }
 
 // Curve items bake rotation/scale into their geometry (so walls can follow the
 // terrain); this resolves an item's stored local points into build-space.
+// Terraces and shorelines are built from the ground as sculpted (they reshape
+// the surface themselves); everything else follows the finished surface.
 function resolveCurvePts(world, item) {
   const c = Math.cos(item.rot), s = Math.sin(item.rot);
+  const def = curveDef(item.type);
+  const fromGrade = def && (def.kind === 'terrace' || def.kind === 'shore');
   return item.pts.map(([dx, dy, dz]) => {
     const x = (dx * c + dz * s) * item.scale;
     const z = (-dx * s + dz * c) * item.scale;
-    const y = world === design ? design.terrain.heightAt(item.x + x, item.z + z) : dy;
+    const y = world !== design ? dy
+      : fromGrade ? design.terrain.gradeAt(item.x + x, item.z + z) : design.terrain.heightAt(item.x + x, item.z + z);
     return [x, y, z];
   });
 }
@@ -329,21 +334,64 @@ let priceOverrides = {};
 let qtyOverrides = {};
 let customLines = []; // landscaper-entered services: {id, label, amount}
 
-// Trench items are cut into the design terrain (restored when deleted).
+// Drawn items that reshape the design terrain (restored when deleted):
+// trenches and creeks cut in, terraces fill up, shorelines open up water.
+function shapesGround(def) {
+  return !!def && (def.kind === 'trench' || def.kind === 'terrace' || def.kind === 'shore' || !!def.cut);
+}
+const TERRACE_FT = [1, 5]; // terrace height range offered in the panel (ft)
+function terraceHeight(it) { return it.height ?? curveDef(it.type).height; }
+
 function syncCuts() {
-  const cuts = design.items.filter(it => it.pts && curveDef(it.type) && (curveDef(it.type).kind === 'trench' || curveDef(it.type).cut)).map(it => {
+  const cuts = design.items.filter(it => it.pts && shapesGround(curveDef(it.type))).map(it => {
     const def = curveDef(it.type);
-    const c = def.cut || { width: def.width, depth: def.height };
     const local = resolveCurvePts(design, it).map(p => new THREE.Vector3(p[0], 0, p[2]));
+    const corners = local.map(p => [+(p.x + it.x).toFixed(3), +(p.z + it.z).toFixed(3)]);
+    if (def.kind === 'terrace') return { kind: 'terrace', poly: corners, height: terraceHeight(it), inset: terraceInset(it.wall) };
     const pts = local.length > 1 ? new THREE.CatmullRomCurve3(local).getSpacedPoints(Math.max(4, local.length * 12)) : local;
-    return { pts: pts.map(p => [+(p.x + it.x).toFixed(3), +(p.z + it.z).toFixed(3)]), width: c.width * it.scale, depth: c.depth, flat: c.flat, lip: c.lip, tint: c.tint };
+    const path = pts.map(p => [+(p.x + it.x).toFixed(3), +(p.z + it.z).toFixed(3)]);
+    if (def.kind === 'shore') return { kind: 'shore', style: def.shore, pts: path, side: waterSide(corners, it.flip) };
+    const c = def.cut || { width: def.width, depth: def.height };
+    return { pts: path, width: c.width * it.scale, depth: c.depth, flat: c.flat, lip: c.lip, tint: c.tint };
   });
-  design.terrain.setCuts(cuts);
+  if (design.terrain.setCuts(cuts)) regroundItems();
+}
+
+// The ground moved under existing items: re-seat placed items on it and
+// rebuild drawn ones (paths, walls) so they follow the new surface.
+function regroundItems() {
+  for (const it of design.items) {
+    const obj = objectFor(design, it.id);
+    if (!obj) continue;
+    if (it.pts) {
+      if (!shapesGround(curveDef(it.type))) respawnItem(design, it);
+    } else {
+      it.y = design.terrain.heightAt(it.x, it.z);
+      obj.position.y = it.y;
+    }
+  }
+  if (design.selected != null && design.ring && design.ring.visible) {
+    const sel = itemFor(design, design.selected);
+    if (sel) design.ring.position.y = sel.y + 0.03;
+  }
 }
 
 function curveLenFt(world, it) {
   const pts = resolveCurvePts(world, it).map(pt => new THREE.Vector3(...pt));
+  if (curveDef(it.type).kind === 'terrace') {
+    // a terrace outline is straight-sided and closed: its wall's perimeter
+    let m = 0;
+    pts.forEach((p, i) => { m += Math.hypot(pts[(i + 1) % pts.length].x - p.x, pts[(i + 1) % pts.length].z - p.z); });
+    return m * 3.28084;
+  }
   return new THREE.CatmullRomCurve3(pts).getLength() * 3.28084;
+}
+
+function terraceAreaSqFt(world, it) {
+  const pts = resolveCurvePts(world, it);
+  let a = 0;
+  pts.forEach((p, i) => { const q = pts[(i + 1) % pts.length]; a += p[0] * q[2] - q[0] * p[2]; });
+  return Math.abs(a) / 2 * 10.7639;
 }
 
 // Returns the estimated cost for one item, or null if it isn't estimated
@@ -352,6 +400,11 @@ function estimateCost(world, it) {
   if (it.pts) {
     if (EXCLUDED_TYPES.has(it.type)) return null;
     if (it.cost != null) return it.cost;
+    if (curveDef(it.type).kind === 'terrace') {
+      // wall face (exposed height + footing course) plus fill under the terrace
+      const faceFt = terraceHeight(it) * 3.28084 + 0.5;
+      return Math.round(curveLenFt(world, it) * faceFt * TERRACE_RATES[it.wall || 'block'] + terraceAreaSqFt(world, it) * TERRACE_RATES.fill);
+    }
     const rate = CURVE_RATES[it.type];
     if (rate == null) return null;
     const ft = curveLenFt(world, it);
@@ -396,7 +449,7 @@ function estimateData() {
     rows.push({ kind: 'curve', it, def, ft, cost, manual: it.cost != null });
   }
   if (world === design) {
-    const cellSqFt = Math.pow(40 / 96, 2) * 10.7639; // one terrain vertex cell, in sq ft
+    const cellSqFt = Math.pow(SIZE / SEGS, 2) * 10.7639; // one terrain vertex cell, in sq ft
     PAINTS.forEach((paint, idx) => {
       const baseRate = PAINT_RATES[paint.name];
       if (baseRate == null) return;
@@ -428,7 +481,7 @@ function designSummary() {
     else counts.set(nm, (counts.get(nm) || 0) + 1);
   }
   const out = [...counts].map(([nm, n]) => `${n} × ${nm}`).concat(lines);
-  const cellSqFt = Math.pow(40 / 96, 2) * 10.7639;
+  const cellSqFt = Math.pow(SIZE / SEGS, 2) * 10.7639;
   PAINTS.forEach((paint, idx) => {
     let n = 0;
     for (const v of design.terrain.paint) if (v === idx) n++;
@@ -590,6 +643,7 @@ function select(world, id) {
     selScale.value = it.scale;
     updateColorRows(it, def);
     updateTierRows(world, it, def);
+    updateShapeRows(it, def);
   }
 }
 
@@ -617,6 +671,35 @@ for (const k of ['row2', 'row3']) {
     document.getElementById('tier-' + k + '-v').textContent = it[k] == null ? 'none' : v + ' ft';
   }));
   inp.addEventListener('change', () => { sliderArmed = true; });
+}
+
+// Terrace height + wall style; shoreline water-side flip
+function updateShapeRows(it, def) {
+  const ter = document.getElementById('terrace-opts'), sho = document.getElementById('shore-opts');
+  const isTer = !!(it.pts && def.kind === 'terrace'), isSho = !!(it.pts && def.kind === 'shore');
+  if (ter) ter.classList.toggle('hidden', !isTer);
+  if (sho) sho.classList.toggle('hidden', !isSho);
+  if (isTer && ter) {
+    const ft = Math.round(terraceHeight(it) * 3.28084 * 2) / 2;
+    $('terrace-h').value = ft;
+    $('terrace-h-v').textContent = ft + ' ft';
+    $('terrace-wall').value = it.wall || 'block';
+  }
+}
+{
+  const h = document.getElementById('terrace-h');
+  if (h) {
+    h.min = TERRACE_FT[0]; h.max = TERRACE_FT[1];
+    h.addEventListener('input', () => selEdit(it => {
+      it.height = +h.value / 3.28084;
+      $('terrace-h-v').textContent = h.value + ' ft';
+    }));
+    h.addEventListener('change', () => { sliderArmed = true; });
+    const w = $('terrace-wall');
+    w.innerHTML = Object.entries(TERRACE_STYLES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+    w.addEventListener('change', () => { pushUndo(); selEdit(it => { it.wall = w.value; }); });
+    $('shore-flip').addEventListener('click', () => { pushUndo(); selEdit(it => { it.flip = !it.flip; }); });
+  }
 }
 
 function respawnItem(world, it) {
@@ -749,9 +832,16 @@ function updateHint() {
     case 'place': setHint(TOUCH
       ? `Tap to place ${assetDef(tool.asset).name} · drag to turn the view · two fingers to move/zoom`
       : `Click to place ${assetDef(tool.asset).name} · Esc to finish · right-drag to orbit`); break;
-    case 'draw': setHint(TOUCH
-      ? `Tap points to draw ${curveDef(tool.asset).name.replace(' (draw)', '')} · ✓ Done to finish · drag to turn the view`
-      : `Click points to draw ${curveDef(tool.asset).name.replace(' (draw)', '')} · double-click or Enter to finish · Esc to cancel`); break;
+    case 'draw': {
+      const cd = curveDef(tool.asset), nm = cd.name.replace(' (draw)', '');
+      const what = cd.kind === 'terrace' ? `${TOUCH ? 'Tap' : 'Click'} the terrace's corners`
+        : cd.kind === 'shore' ? `${TOUCH ? 'Tap' : 'Click'} along the shoreline (water fills the side away from the middle of the lot — flip it after)`
+        : `${TOUCH ? 'Tap' : 'Click'} points to draw ${nm}`;
+      setHint(TOUCH
+        ? `${what} · ✓ Done to finish · drag to turn the view`
+        : `${what} · double-click or Enter to finish · Esc to cancel`);
+      break;
+    }
     case 'sculpt-up': setHint(`Drag to raise the ground · ${TOUCH ? 'two fingers to move/zoom' : 'right-drag to orbit'}`); break;
     case 'sculpt-down': setHint(`Drag to lower the ground · ${TOUCH ? 'two fingers to move/zoom' : 'right-drag to orbit'}`); break;
     case 'paint': setHint(`Painting ${PAINTS[tool.idx].name} · drag on the ground · ${TOUCH ? 'two fingers to move/zoom' : 'right-drag to orbit'}`); break;
@@ -805,6 +895,10 @@ function finishDraw() {
   draw.lastHover = null;
   updateDrawActions();
   if (pts.length < 2) return;
+  if (curveDef(draw.asset).kind === 'terrace' && pts.length < 3) {
+    setHint('A terrace needs at least 3 corners — click round its outline');
+    return;
+  }
   pushUndo();
   let cx = 0, cz = 0;
   for (const pt of pts) { cx += pt.x; cz += pt.z; }
@@ -1294,7 +1388,7 @@ async function handlePhotoDataUrl(dataUrl) {
   updateSun();
   updateHint();
 }
-window.__verdura = { handlePhotoDataUrl, design, photo, renderer, Photo }; // for testing/automation
+window.__verdura = { handlePhotoDataUrl, design, photo, renderer, Photo, select: id => select(active, id), estimate: () => estimateData() }; // for testing/automation
 
 let sceneScale = 1;
 function applySceneScale(v) { sceneScale = v; }

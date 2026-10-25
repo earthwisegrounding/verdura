@@ -27,7 +27,7 @@ export const REGIONS = {
       // hardscape
       'boulder', 'patio', 'path', 'stepstones',
       // structures
-      'farmhouse', 'colonial', 'barn', 'shed', 'bench', 'firepit', 'pergola',
+      'farmhouse', 'whitefarm', 'colonial', 'barn', 'shed', 'bench', 'firepit', 'pergola',
     ],
     icons: { shrub: '🌿', aspen: '🌳', oak: '🌰' },
     renames: {
@@ -43,7 +43,7 @@ export const REGIONS = {
       farmhouse: 'Modern farmhouse',
       colonial: 'Two-story home',
     },
-    curves: ['rockwall', 'stonewall', 'fencedraw', 'walkway', 'driveway', 'drycreek'],
+    curves: ['rockwall', 'stonewall', 'fencedraw', 'walkway', 'driveway', 'drycreek', 'terrace', 'beachfront', 'bulkhead'],
     paints: [
       { name: 'Turf grass',    c: '#5d9e4c', tex: 'grass' },
       { name: 'Soil',          c: '#7a5230' },

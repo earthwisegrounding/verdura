@@ -63,6 +63,13 @@
         <label class="slider">2nd row from<input id="tier-row2" type="range" min="0" max="10" step="0.5" value="10"><span id="tier-row2-v" class="tierv">none</span></label>
         <label class="slider">3rd row from<input id="tier-row3" type="range" min="0" max="10" step="0.5" value="10"><span id="tier-row3-v" class="tierv">none</span></label>
       </div>
+      <div id="terrace-opts" class="hidden">
+        <label class="slider">Height<input id="terrace-h" type="range" min="1" max="5" step="0.5" value="2"><span id="terrace-h-v" class="tierv">2 ft</span></label>
+        <label class="selectrow">Wall<select id="terrace-wall"></select></label>
+      </div>
+      <div id="shore-opts" class="hidden">
+        <button id="shore-flip" title="Put the water on the other side of the shoreline">⇄ Flip water side</button>
+      </div>
       <label class="colorrow hidden" id="row-body">Body color<input type="color" id="col-body" value="#d9d2c3"></label>
       <label class="colorrow hidden" id="row-roof">Roof / accent<input type="color" id="col-roof" value="#6b6560"></label>
       <button id="col-reset" class="hidden">Reset colors</button>

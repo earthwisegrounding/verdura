@@ -60,6 +60,13 @@
       <h3 id="sel-name">Selected</h3>
       <label class="slider">Rotate<input id="sel-rot" type="range" min="0" max="360" step="1" value="0"></label>
       <label class="slider">Scale<input id="sel-scale" type="range" min="0.3" max="3" step="0.05" value="1"></label>
+      <div id="terrace-opts" class="hidden">
+        <label class="slider">Height<input id="terrace-h" type="range" min="1" max="5" step="0.5" value="2"><span id="terrace-h-v" class="tierv">2 ft</span></label>
+        <label class="selectrow">Wall<select id="terrace-wall"></select></label>
+      </div>
+      <div id="shore-opts" class="hidden">
+        <button id="shore-flip" title="Put the water on the other side of the shoreline">⇄ Flip water side</button>
+      </div>
       <label class="colorrow hidden" id="row-body">Body color<input type="color" id="col-body" value="#d9d2c3"></label>
       <label class="colorrow hidden" id="row-roof">Roof / accent<input type="color" id="col-roof" value="#6b6560"></label>
       <button id="col-reset" class="hidden">Reset colors</button>

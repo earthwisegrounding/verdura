@@ -32,6 +32,11 @@ export const CURVE_RATES = {
   drycreek: 22,   // river-rock dry creek bed w/ fabric + edging
 };
 
+// Raised terrace: $ per sq ft of retaining-wall face by wall style (segmental
+// block ~$30-50, poured concrete ~$40-60, timber ~$20-35 installed), plus $ per
+// sq ft of terrace for imported fill, compaction and topsoil.
+export const TERRACE_RATES = { block: 38, concrete: 48, timber: 28, fill: 4 };
+
 // $ per square foot for painted ground materials that get estimated.
 // Grass is deliberately absent: the whole lot starts as grass, so it is
 // treated as existing lawn and only changed ground is billed.
@@ -49,4 +54,5 @@ export const PAINT_RATES = {
 export const EXCLUDED_CATS = new Set([
   'Homes — single story', 'Homes — two story', 'Outbuildings', 'Commercial',
 ]);
-export const EXCLUDED_TYPES = new Set(['driveway']);
+// Site context, not landscaping: driveways and the waterfront itself.
+export const EXCLUDED_TYPES = new Set(['driveway', 'beachfront', 'bulkhead']);
