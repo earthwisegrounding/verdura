@@ -31,7 +31,8 @@ const REGION = activeRegion();
   if (brandEl) brandEl.textContent = REGION.brand;
 }
 
-/* ---- customer quote mode: prices hidden, design goes to the business ---- */
+/* ---- customer quote mode: prices hidden, design goes to the business ----
+   (send: false keeps the customer view and tour but drops the quote request) */
 const QUOTE = (typeof window !== 'undefined' && window.__VERDURA_QUOTE) || null;
 if (QUOTE) {
   document.body.classList.add('quote-mode');
@@ -44,114 +45,117 @@ if (QUOTE) {
     const brand = document.getElementById('brand');
     if (brand) brand.firstChild.textContent = QUOTE.mark + ' ';
   }
+  const sendable = QUOTE.send !== false;
   const bar = document.createElement('div');
   bar.id = 'quote-bar';
-  bar.innerHTML = '<button id="quote-send">✉️ Send my design for a free quote</button>';
+  if (sendable) bar.innerHTML = '<button id="quote-send">✉️ Send my design for a free quote</button>';
   document.getElementById('viewport').appendChild(bar);
-  import('./tour.js').then(m => m.initTour({ business: QUOTE.business }));
+  import('./tour.js').then(m => m.initTour({ business: QUOTE.business, send: sendable }));
 
-  const biz = esc(QUOTE.business || 'us');
-  const modal = document.createElement('div');
-  modal.id = 'quote-modal';
-  modal.hidden = true;
-  modal.innerHTML = `
-    <div class="qm-card" role="dialog" aria-modal="true" aria-labelledby="qm-title">
-      <button type="button" class="qm-x" aria-label="Close">✕</button>
-      <form novalidate>
-        <h2 id="qm-title">Send your design for a free quote</h2>
-        <p class="qm-sub">${biz} will see your yard in 3D and get back to you.</p>
-        <label><span>Name</span><input name="name" autocomplete="name" required></label>
-        <div class="qm-row">
-          <label><span>Phone</span><input name="phone" type="tel" autocomplete="tel"></label>
-          <label><span>Email</span><input name="email" type="email" autocomplete="email"></label>
-        </div>
-        <label><span>Property address</span><input name="address" autocomplete="street-address"></label>
-        <label><span>Anything else we should know?</span><textarea name="notes" rows="3" placeholder="Budget, timing, what matters most…"></textarea></label>
-        <input class="qm-hp" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true">
-        <p class="qm-err" role="alert"></p>
-        <button type="submit" class="qm-go">Send my design</button>
-      </form>
-    </div>`;
-  document.body.appendChild(modal);
-  const qForm = modal.querySelector('form');
-  const qErr = modal.querySelector('.qm-err');
-  let lastFocus = null;
-  const openModal = () => {
-    lastFocus = document.activeElement;
-    modal.hidden = false;
-    qForm.elements.name.focus();
-  };
-  const closeModal = () => {
+  if (sendable) {
+    const biz = esc(QUOTE.business || 'us');
+    const modal = document.createElement('div');
+    modal.id = 'quote-modal';
     modal.hidden = true;
-    if (lastFocus) lastFocus.focus();
-  };
-  document.getElementById('quote-send').addEventListener('click', openModal);
-  modal.querySelector('.qm-x').addEventListener('click', closeModal);
-  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-  modal.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeModal(); return; }
-    if (e.key !== 'Tab') return;
-    const f = [...modal.querySelectorAll('button, input:not(.qm-hp), textarea, a[href]')];
-    const first = f[0], last = f[f.length - 1];
-    if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault(); }
-    else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault(); }
-  });
-
-  qForm.addEventListener('submit', async e => {
-    e.preventDefault();
-    const v = k => qForm.elements[k].value.trim();
-    const name = v('name'), phone = v('phone'), email = v('email');
-    if (!name) { qErr.textContent = 'Please add your name.'; qForm.elements.name.focus(); return; }
-    if (!phone && !email) { qErr.textContent = 'Please add a phone number or email so we can reach you.'; qForm.elements.phone.focus(); return; }
-    qErr.textContent = '';
-    const go = qForm.querySelector('.qm-go');
-    go.disabled = true;
-    go.textContent = 'Sending…';
-
-    const code = await encodeDesign(fullState());
-    const link = location.origin + location.pathname + '#design=' + code;
-    const summary = designSummary();
-    const subject = 'Design quote request — ' + name;
-    const payload = {
-      name, phone, email, address: v('address'), notes: v('notes'),
-      whats_in_the_design: summary,
-      view_design_in_3d: link,
-      _subject: subject, _gotcha: qForm.elements._gotcha.value,
+    modal.innerHTML = `
+      <div class="qm-card" role="dialog" aria-modal="true" aria-labelledby="qm-title">
+        <button type="button" class="qm-x" aria-label="Close">✕</button>
+        <form novalidate>
+          <h2 id="qm-title">Send your design for a free quote</h2>
+          <p class="qm-sub">${biz} will see your yard in 3D and get back to you.</p>
+          <label><span>Name</span><input name="name" autocomplete="name" required></label>
+          <div class="qm-row">
+            <label><span>Phone</span><input name="phone" type="tel" autocomplete="tel"></label>
+            <label><span>Email</span><input name="email" type="email" autocomplete="email"></label>
+          </div>
+          <label><span>Property address</span><input name="address" autocomplete="street-address"></label>
+          <label><span>Anything else we should know?</span><textarea name="notes" rows="3" placeholder="Budget, timing, what matters most…"></textarea></label>
+          <input class="qm-hp" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <p class="qm-err" role="alert"></p>
+          <button type="submit" class="qm-go">Send my design</button>
+        </form>
+      </div>`;
+    document.body.appendChild(modal);
+    const qForm = modal.querySelector('form');
+    const qErr = modal.querySelector('.qm-err');
+    let lastFocus = null;
+    const openModal = () => {
+      lastFocus = document.activeElement;
+      modal.hidden = false;
+      qForm.elements.name.focus();
     };
-    if (email) payload._replyto = email;
-    try {
-      if (!QUOTE.formspree) throw new Error('no form endpoint');
-      const res = await fetch(QUOTE.formspree, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error('Formspree ' + res.status);
-      modal.querySelector('.qm-card').innerHTML = `
-        <div class="qm-done" role="status" tabindex="-1">
-          <h2>Thanks, ${esc(name.split(' ')[0])}!</h2>
-          <p>Your design is on its way to ${biz}. We'll be in touch soon${QUOTE.phone ? ` — need us sooner? Call <a href="tel:${QUOTE.phone.replace(/\D/g, '')}">${esc(QUOTE.phone)}</a>` : ''}.</p>
-          <button type="button" class="qm-go">Back to my design</button>
-        </div>`;
-      modal.querySelector('.qm-done .qm-go').addEventListener('click', closeModal);
-      modal.querySelector('.qm-done').focus();
-      setHint('Design sent ✓');
-    } catch (err) {
-      console.error(err);
-      go.disabled = false;
-      go.textContent = 'Send my design';
-      qErr.textContent = 'We couldn\'t send that just now — opening your email app instead.';
-      const body =
-        'Hi ' + (QUOTE.business || '') + ',\n\nI designed my yard in your online Design Studio and would like a free quote.\n\n' +
-        'Name: ' + name + '\nPhone: ' + phone + '\nEmail: ' + email + '\nProperty address: ' + v('address') +
-        (v('notes') ? '\n\n' + v('notes') : '') +
-        '\n\nWhat\'s in my design:\n' + summary +
-        '\n\nView my design in 3D:\n' + link + '\n';
-      setTimeout(() => {
-        location.href = 'mailto:' + QUOTE.email + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-      }, 900);
-    }
-  });
+    const closeModal = () => {
+      modal.hidden = true;
+      if (lastFocus) lastFocus.focus();
+    };
+    document.getElementById('quote-send').addEventListener('click', openModal);
+    modal.querySelector('.qm-x').addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+    modal.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { closeModal(); return; }
+      if (e.key !== 'Tab') return;
+      const f = [...modal.querySelectorAll('button, input:not(.qm-hp), textarea, a[href]')];
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault(); }
+      else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault(); }
+    });
+
+    qForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      const v = k => qForm.elements[k].value.trim();
+      const name = v('name'), phone = v('phone'), email = v('email');
+      if (!name) { qErr.textContent = 'Please add your name.'; qForm.elements.name.focus(); return; }
+      if (!phone && !email) { qErr.textContent = 'Please add a phone number or email so we can reach you.'; qForm.elements.phone.focus(); return; }
+      qErr.textContent = '';
+      const go = qForm.querySelector('.qm-go');
+      go.disabled = true;
+      go.textContent = 'Sending…';
+
+      const code = await encodeDesign(fullState());
+      const link = location.origin + location.pathname + '#design=' + code;
+      const summary = designSummary();
+      const subject = 'Design quote request — ' + name;
+      const payload = {
+        name, phone, email, address: v('address'), notes: v('notes'),
+        whats_in_the_design: summary,
+        view_design_in_3d: link,
+        _subject: subject, _gotcha: qForm.elements._gotcha.value,
+      };
+      if (email) payload._replyto = email;
+      try {
+        if (!QUOTE.formspree) throw new Error('no form endpoint');
+        const res = await fetch(QUOTE.formspree, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error('Formspree ' + res.status);
+        modal.querySelector('.qm-card').innerHTML = `
+          <div class="qm-done" role="status" tabindex="-1">
+            <h2>Thanks, ${esc(name.split(' ')[0])}!</h2>
+            <p>Your design is on its way to ${biz}. We'll be in touch soon${QUOTE.phone ? ` — need us sooner? Call <a href="tel:${QUOTE.phone.replace(/\D/g, '')}">${esc(QUOTE.phone)}</a>` : ''}.</p>
+            <button type="button" class="qm-go">Back to my design</button>
+          </div>`;
+        modal.querySelector('.qm-done .qm-go').addEventListener('click', closeModal);
+        modal.querySelector('.qm-done').focus();
+        setHint('Design sent ✓');
+      } catch (err) {
+        console.error(err);
+        go.disabled = false;
+        go.textContent = 'Send my design';
+        qErr.textContent = 'We couldn\'t send that just now — opening your email app instead.';
+        const body =
+          'Hi ' + (QUOTE.business || '') + ',\n\nI designed my yard in your online Design Studio and would like a free quote.\n\n' +
+          'Name: ' + name + '\nPhone: ' + phone + '\nEmail: ' + email + '\nProperty address: ' + v('address') +
+          (v('notes') ? '\n\n' + v('notes') : '') +
+          '\n\nWhat\'s in my design:\n' + summary +
+          '\n\nView my design in 3D:\n' + link + '\n';
+        setTimeout(() => {
+          location.href = 'mailto:' + QUOTE.email + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+        }, 900);
+      }
+    });
+  }
 }
 
 function esc(s) {
@@ -223,6 +227,12 @@ design.scene.fog = new THREE.Fog(0xaee2ff, 70, 180);
 design.controls = new OrbitControls(design.camera, canvas);
 design.controls.enableDamping = true;
 design.controls.maxPolarAngle = Math.PI / 2 - 0.03;
+// a customer page can open on its own framing (e.g. a showcase design)
+if (QUOTE && QUOTE.camera) {
+  design.camera.position.fromArray(QUOTE.camera.p);
+  design.controls.target.fromArray(QUOTE.camera.t);
+  design.controls.update();
+}
 design.controls.maxDistance = 90;
 
 // --- photo world ---

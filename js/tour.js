@@ -45,11 +45,11 @@ function steps(business) {
     {
       target: sidebarOr(() => $('#paints')),
       title: 'Paint the ground',
-      body: `Choose rock mulch, soil or turf${inMenu()}, then drag across the ground to paint it. The Brush size slider makes strokes wider or narrower.`,
+      body: `Choose a ground cover like mulch, stone or soil${inMenu()}, then drag across the ground to paint it. The Brush size slider makes strokes wider or narrower.`,
     },
     {
       target: sidebarOr(drawGrid),
-      title: 'Walls, walkways & fences',
+      title: 'Walls, paths, terraces & more',
       body: `Pick one${inMenu()}, ${tap} points along the ground to lay it out, then press ✓ Done.`,
     },
     {
@@ -160,8 +160,9 @@ function close() {
   if (lastFocus && lastFocus.focus) lastFocus.focus();
 }
 
-export function initTour({ business = 'us' } = {}) {
+export function initTour({ business = 'us', send = true } = {}) {
   list = steps(business);
+  if (!send) list = list.filter(st => st.title !== 'Send it for a free quote');
   const bar = $('#quote-bar');
   if (bar && !$('#tour-btn')) {
     const b = document.createElement('button');
